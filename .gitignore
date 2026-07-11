@@ -1,0 +1,30 @@
+# dependencies
+/node_modules
+
+# Next.js and OpenNext output
+/.next
+/.open-next
+/out
+
+# tests
+/coverage
+/playwright-report
+/test-results
+
+# local environment and Cloudflare state
+.env*
+!.env.example
+/.wrangler
+/.pnpm-store
+*.local
+
+# editor and OS
+.DS_Store
+*.swp
+
+# logs
+*.log
+*.tsbuildinfo
+
+# generated Cloudflare types
+/cloudflare-env.d.ts
