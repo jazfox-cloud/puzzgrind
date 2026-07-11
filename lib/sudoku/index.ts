@@ -12,5 +12,8 @@ export {
   withCell,
 } from "./board";
 export type { Board, CellValue } from "./board";
+export { candidatesFor } from "./candidates";
+export { solveBoard } from "./solver";
+export type { SolveResult } from "./solver";
 export { findConflicts, findGivenViolations, isCompleteValidBoard, isValidPartialBoard, peersOf } from "./validator";
 export type { BoardConflict, ConflictKind, GivenViolation } from "./validator";
