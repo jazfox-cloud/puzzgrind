@@ -10,5 +10,18 @@
   },
   "observability": {
     "enabled": true
+  },
+  "env": {
+    "staging": {
+      "name": "puzzgrind-staging",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "puzzgrind-staging-db",
+          "database_id": "d3f0b3d8-81a8-40de-96f4-7ed248e0fb93",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
   }
 }
