@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function HomePage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-8 sm:px-10">
@@ -19,9 +21,9 @@ export default function HomePage() {
           <p className="mt-7 max-w-xl text-lg leading-8 text-[var(--ink-soft)]">
             PuzzGrind is beginning with a daily Sudoku that explains the logic behind every hint.
           </p>
-          <div className="mt-9 inline-flex rounded-full bg-emerald-950 px-6 py-3 font-bold text-white">
-            Daily Sudoku is coming soon
-          </div>
+          <Link className="mt-9 inline-flex rounded-full bg-emerald-950 px-6 py-3 font-bold text-white transition hover:bg-emerald-800 focus:outline-4 focus:outline-amber-400" href="/sudoku">
+            Play Daily Sudoku
+          </Link>
         </div>
 
         <div aria-label="Sudoku preview" className="mx-auto grid aspect-square w-full max-w-md grid-cols-3 gap-1 rounded-[2rem] bg-emerald-950 p-3 shadow-2xl shadow-emerald-950/15">
