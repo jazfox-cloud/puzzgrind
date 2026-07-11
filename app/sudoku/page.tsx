@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   description: "Play today's free Medium Sudoku on PuzzGrind.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function SudokuPage() {
   return <main className="mx-auto min-h-screen max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
     <header className="mb-8 flex items-center justify-between border-b border-emerald-950/15 pb-5"><Link className="text-xl font-black tracking-[-0.04em]" href="/">PuzzGrind</Link><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black uppercase tracking-[0.14em]">Daily Sudoku</span></header>
