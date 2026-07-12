@@ -20,4 +20,14 @@ describe("Daily Sudoku", () => {
     expect(result).not.toHaveProperty("solution");
     expect(db.statements[0].bindings).toEqual(["2026-07-12"]);
   });
+
+  it("allows an explicit staging-only fallback while retaining today's public date", async () => {
+    const db = new FakeD1Database();
+    db.queueFirst(null);
+    db.queueFirst({ id: "old-puzzle", puzzle_date: "2026-07-11", difficulty: "medium", givens: "0".repeat(81) });
+    const result = await readDailyPuzzle(db, "2026-07-12", { allowLatestPublished: true });
+    expect(result?.puzzleId).toBe("old-puzzle");
+    expect(result?.puzzleDate).toBe("2026-07-12");
+    expect(db.statements).toHaveLength(2);
+  });
 });

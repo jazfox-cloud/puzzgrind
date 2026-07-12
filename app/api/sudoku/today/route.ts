@@ -6,7 +6,10 @@ import { readDailyPuzzle, utcDate } from "@/lib/sudoku/daily";
 export async function GET() {
   try {
     const date = utcDate();
-    const puzzle = await readDailyPuzzle(getCloudflareContext().env.DB, date);
+    const { env } = getCloudflareContext();
+    const puzzle = await readDailyPuzzle(env.DB, date, {
+      allowLatestPublished: env.ALLOW_STAGING_PUZZLE_FALLBACK === "true",
+    });
     if (!puzzle) {
       return NextResponse.json({ error: "daily_puzzle_unavailable", puzzleDate: date }, { status: 404 });
     }

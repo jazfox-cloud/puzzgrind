@@ -20,8 +20,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const db = getCloudflareContext().env.DB;
-    const puzzle = await readDailyPuzzle(db, utcDate());
+    const { env } = getCloudflareContext();
+    const db = env.DB;
+    const puzzle = await readDailyPuzzle(db, utcDate(), {
+      allowLatestPublished: env.ALLOW_STAGING_PUZZLE_FALLBACK === "true",
+    });
     if (!puzzle) return NextResponse.json({ error: "daily_puzzle_unavailable" }, { status: 404 });
     const repository = new SudokuSessionRepository(db);
     const existing = await repository.findByAnonymousPuzzle(anonymousId, puzzle.puzzleId);

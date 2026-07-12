@@ -27,8 +27,8 @@ export function nextUtcMidnight(date: string): string {
   return midnight.toISOString();
 }
 
-export async function readDailyPuzzle(db: D1DatabaseLike, date: string): Promise<PublicDailyPuzzle | null> {
-  const row = await db
+async function readExactPuzzle(db: D1DatabaseLike, date: string): Promise<DailyPuzzleRow | null> {
+  return db
     .prepare(`
       SELECT id, puzzle_date, difficulty, givens
       FROM sudoku_puzzles
@@ -37,11 +37,32 @@ export async function readDailyPuzzle(db: D1DatabaseLike, date: string): Promise
     `)
     .bind(date)
     .first<DailyPuzzleRow>();
+}
+
+async function readLatestPublishedPuzzle(db: D1DatabaseLike): Promise<DailyPuzzleRow | null> {
+  return db
+    .prepare(`
+      SELECT id, puzzle_date, difficulty, givens
+      FROM sudoku_puzzles
+      WHERE difficulty = 'medium' AND status = 'published'
+      ORDER BY puzzle_date DESC
+      LIMIT 1
+    `)
+    .first<DailyPuzzleRow>();
+}
+
+export async function readDailyPuzzle(
+  db: D1DatabaseLike,
+  date: string,
+  options: { allowLatestPublished?: boolean } = {},
+): Promise<PublicDailyPuzzle | null> {
+  const exact = await readExactPuzzle(db, date);
+  const row = exact ?? (options.allowLatestPublished ? await readLatestPublishedPuzzle(db) : null);
   if (!row || row.difficulty !== "medium") return null;
   parseBoard(row.givens);
   return {
     puzzleId: row.id,
-    puzzleDate: row.puzzle_date,
+    puzzleDate: exact ? row.puzzle_date : date,
     difficulty: "medium",
     givens: row.givens,
     expiresAt: nextUtcMidnight(date),
