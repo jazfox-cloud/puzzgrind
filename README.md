@@ -42,6 +42,19 @@ The key combines the route class, Cloudflare's trusted `CF-Connecting-IP`, and a
 
 Automatic Git previews use the top-level Wrangler configuration: `APP_ENV=preview`, preview-only rate-limit namespaces `3101` through `3106`, and the non-production staging D1 database. Explicit `--env production` and `--env staging` targets select their own bindings. Preview and staging share test data, so preview data is disposable and must never be treated as production. The Git integration currently uploads preview versions to the same Worker service, so `SESSION_SIGNING_SECRET` remains the service secret; it is never printed or exposed to preview clients. This accepted limitation avoids creating a new secret while D1 data and rate counters remain isolated from production.
 
+### Cloudflare Git deployment contract
+
+Cloudflare Dashboard path: **Workers & Pages → puzzgrind → Settings → Build → Build configuration**.
+
+| Branch class | Cloudflare command | Required result |
+| --- | --- | --- |
+| Production branch (`main`) | Deploy command: `pnpm deploy` | `APP_ENV=production`, `puzzgrind-db`, namespaces `1101–1106` |
+| Non-production / PR | Version command: `npx wrangler versions upload` | top-level `APP_ENV=preview`, staging D1, namespaces `3101–3106`, no Production traffic change |
+
+The Production deploy command must never be the unqualified `pnpm exec opennextjs-cloudflare deploy`; without `--env production`, Wrangler selects the Preview-safe top-level configuration. `pnpm deploy` runs `scripts/validate-cloudflare-deploy.mjs production` before building and deploying with `--env production`. The guard verifies the Worker name, APP environment, exact Production D1 ID, namespace IDs, and separation from Preview/Staging, and fails non-zero without an explicit Production target.
+
+Dashboard settings are external state and are not changed by repository commits. After merging a deployment configuration change, verify that the Production branch is `main`, change the Dashboard Deploy command from `pnpm exec opennextjs-cloudflare deploy` to `pnpm deploy`, leave the PR Version command unchanged, and validate the next automatic `main` build's actual Worker bindings before considering the incident permanently closed.
+
 Session routes verify the signed token before reading D1, then rate-limit the authorized session before mutation. Invalid signatures therefore cause no D1 lookup. A replayed valid token can cause one indexed session lookup before the session-scoped limiter runs; this is a known residual read-amplification risk. A second pre-authorization binding was not added because it would require another independent counter policy (or incorrectly count the same binding twice).
 
 JSON request limits are 256 bytes for session start, 512 bytes for share-token creation, 1,024 bytes for hints, and 8,192 bytes for save/complete. Oversized bodies return 413 before JSON parsing completes.
