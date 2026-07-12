@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { findConflicts, isCompleteValidBoard, parseBoard } from "@/lib/sudoku";
+import {
+  clearSavedGame,
+  getOrCreateAnonymousId,
+  loadSavedGame,
+  saveGame,
+} from "@/lib/sudoku/storage";
+import type { GameSnapshot, SavedGame } from "@/lib/sudoku/storage";
 
 type DailyPuzzle = {
   difficulty: "medium";
@@ -10,8 +17,6 @@ type DailyPuzzle = {
   puzzleDate: string;
   puzzleId: string;
 };
-
-type Snapshot = { notes: number[][]; values: number[] };
 
 function formatTime(seconds: number): string {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
@@ -23,11 +28,12 @@ export function SudokuGame() {
   const [notes, setNotes] = useState<number[][]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [noteMode, setNoteMode] = useState(false);
-  const [history, setHistory] = useState<Snapshot[]>([]);
-  const [future, setFuture] = useState<Snapshot[]>([]);
+  const [history, setHistory] = useState<GameSnapshot[]>([]);
+  const [future, setFuture] = useState<GameSnapshot[]>([]);
   const [seconds, setSeconds] = useState(0);
   const [paused, setPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     fetch("/api/sudoku/today")
@@ -37,15 +43,23 @@ export function SudokuGame() {
       })
       .then((daily) => {
         const initial = [...parseBoard(daily.givens)];
+        const saved = loadSavedGame(localStorage, daily.puzzleId, daily.givens);
         setPuzzle(daily);
-        setValues(initial);
-        setNotes(Array.from({ length: 81 }, () => []));
-        const key = "puzzgrind_anonymous_id";
-        let anonymousId = localStorage.getItem(key);
-        if (!anonymousId) {
-          anonymousId = crypto.randomUUID();
-          localStorage.setItem(key, anonymousId);
+        if (saved) {
+          setValues([...saved.values]);
+          setNotes(saved.notes.map((cell) => [...cell]));
+          setSelected(saved.selected);
+          setSeconds(saved.seconds);
+          setPaused(saved.paused);
+          setNoteMode(saved.noteMode);
+          setHistory(saved.history.map((snapshot) => ({ values: [...snapshot.values], notes: snapshot.notes.map((cell) => [...cell]) })));
+          setFuture(saved.future.map((snapshot) => ({ values: [...snapshot.values], notes: snapshot.notes.map((cell) => [...cell]) })));
+        } else {
+          setValues(initial);
+          setNotes(Array.from({ length: 81 }, () => []));
         }
+        setHydrated(true);
+        const anonymousId = getOrCreateAnonymousId(localStorage, () => crypto.randomUUID());
         return fetch("/api/sudoku/session/start", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -54,6 +68,44 @@ export function SudokuGame() {
       })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "Unable to load Sudoku."));
   }, []);
+
+  const currentSave = useCallback((): SavedGame | null => {
+    if (!puzzle || !hydrated || values.length !== 81 || notes.length !== 81) return null;
+    return {
+      version: 1,
+      puzzleId: puzzle.puzzleId,
+      values: [...values],
+      notes: notes.map((cell) => [...cell]),
+      selected,
+      seconds,
+      paused,
+      noteMode,
+      history: history.slice(-100).map((snapshot) => ({ values: [...snapshot.values], notes: snapshot.notes.map((cell) => [...cell]) })),
+      future: future.slice(0, 100).map((snapshot) => ({ values: [...snapshot.values], notes: snapshot.notes.map((cell) => [...cell]) })),
+      savedAt: Date.now(),
+    };
+  }, [future, history, hydrated, noteMode, notes, paused, puzzle, seconds, selected, values]);
+
+  useEffect(() => {
+    const game = currentSave();
+    if (game) saveGame(localStorage, game);
+  }, [currentSave]);
+
+  useEffect(() => {
+    const persist = () => {
+      const game = currentSave();
+      if (game) saveGame(localStorage, game);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") persist();
+    };
+    window.addEventListener("pagehide", persist);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", persist);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [currentSave]);
 
   const conflictCells = useMemo(() => {
     if (values.length !== 81) return new Set<number>();
@@ -118,6 +170,19 @@ export function SudokuGame() {
     setFuture((current) => current.slice(1));
   }, [future, notes, paused, values]);
 
+  const restart = useCallback(() => {
+    if (!puzzle || !window.confirm("Restart today's puzzle? Your current progress will be cleared.")) return;
+    clearSavedGame(localStorage, puzzle.puzzleId);
+    setValues([...parseBoard(puzzle.givens)]);
+    setNotes(Array.from({ length: 81 }, () => []));
+    setSelected(null);
+    setNoteMode(false);
+    setHistory([]);
+    setFuture([]);
+    setSeconds(0);
+    setPaused(false);
+  }, [puzzle]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (/^[1-9]$/.test(event.key)) inputNumber(Number(event.key));
@@ -170,6 +235,7 @@ export function SudokuGame() {
           <button className="min-h-12 rounded-xl border border-emerald-950/20 bg-white/70 font-black" onClick={erase}>Erase</button>
           <button className="min-h-12 rounded-xl border border-emerald-950/20 bg-white/70 font-black disabled:opacity-40" disabled={!history.length} onClick={undo}>Undo</button>
           <button className="min-h-12 rounded-xl border border-emerald-950/20 bg-white/70 font-black disabled:opacity-40" disabled={!future.length} onClick={redo}>Redo</button>
+          <button className="col-span-2 min-h-12 rounded-xl border border-red-900/20 bg-red-50 font-black text-red-900" onClick={restart}>Restart puzzle</button>
         </div>
         <p className="text-sm leading-6 text-[var(--ink-soft)]">Keyboard: 1–9 to enter, N for notes, Delete to erase, Ctrl/⌘+Z to undo.</p>
       </aside>
