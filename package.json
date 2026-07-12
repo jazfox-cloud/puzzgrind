@@ -15,7 +15,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy --env production",
+    "deploy": "node scripts/validate-cloudflare-deploy.mjs production && opennextjs-cloudflare build && opennextjs-cloudflare deploy --env production",
     "deploy:staging": "opennextjs-cloudflare build && opennextjs-cloudflare deploy --env staging",
     "d1:migrate:local": "wrangler d1 migrations apply puzzgrind-staging-db --local --env staging",
     "d1:migrate:staging": "wrangler d1 migrations apply puzzgrind-staging-db --remote --env staging",

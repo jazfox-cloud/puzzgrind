@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 
 import { describe, expect, it } from "vitest";
 
@@ -11,6 +12,9 @@ type EnvironmentConfig = {
 
 const config = JSON.parse(readFileSync("wrangler.jsonc", "utf8")) as EnvironmentConfig & {
   env: { production: EnvironmentConfig; staging: EnvironmentConfig };
+};
+const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
+  scripts: Record<string, string>;
 };
 
 describe("Wrangler environment isolation", () => {
@@ -35,5 +39,24 @@ describe("Wrangler environment isolation", () => {
     expect(config.vars.APP_ENV).toBe("preview");
     expect(config.env.staging.vars.APP_ENV).toBe("staging");
     expect(config.env.production.vars.APP_ENV).toBe("production");
+  });
+
+  it("requires the guarded, explicit Production environment in the deploy script", () => {
+    const deploy = packageJson.scripts.deploy;
+    expect(deploy).toContain("validate-cloudflare-deploy.mjs production");
+    expect(deploy).toContain("deploy --env production");
+    expect(deploy).not.toContain("versions upload");
+  });
+
+  it("passes the Production guard only with an explicit Production target", () => {
+    expect(execFileSync(process.execPath, ["scripts/validate-cloudflare-deploy.mjs", "production"], {
+      encoding: "utf8",
+    })).toContain("Production deploy guard passed");
+    expect(() => execFileSync(process.execPath, ["scripts/validate-cloudflare-deploy.mjs"], {
+      stdio: "pipe",
+    })).toThrow();
+    expect(() => execFileSync(process.execPath, ["scripts/validate-cloudflare-deploy.mjs", "preview"], {
+      stdio: "pipe",
+    })).toThrow();
   });
 });
