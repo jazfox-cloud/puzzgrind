@@ -1,11 +1,15 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ImageResponse } from "next/og";
 
+import { limitApiRequest } from "@/lib/api/rate-limit";
 import { verifyShareToken } from "@/lib/security/share-token";
 
-export async function GET(_: Request, context: { params: Promise<{ token: string }> }) {
+export async function GET(request: Request, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
-  const result = await verifyShareToken(token, getCloudflareContext().env.SESSION_SIGNING_SECRET);
+  const { env } = getCloudflareContext();
+  const limited = await limitApiRequest(request, env, "shareImage");
+  if (limited) return limited;
+  const result = await verifyShareToken(token, env.SESSION_SIGNING_SECRET);
   if (!result) return new Response("Not found", { status: 404 });
   const formattedTime = `${String(Math.floor(result.durationSeconds / 60)).padStart(2, "0")}:${String(result.durationSeconds % 60).padStart(2, "0")}`;
   return new ImageResponse(

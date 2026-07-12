@@ -6,6 +6,10 @@ export type SessionTokenPayload = {
   sessionId: string;
 };
 
+export type SessionTokenVerification =
+  | { ok: true; payload: SessionTokenPayload }
+  | { ok: false; reason: "expired" | "invalid" };
+
 const encoder = new TextEncoder();
 
 function base64Url(bytes: Uint8Array): string {
@@ -31,20 +35,34 @@ export async function createSessionToken(payload: SessionTokenPayload, secret: s
 }
 
 export async function verifySessionToken(token: string, secret: string, now: number): Promise<SessionTokenPayload | null> {
+  const result = await verifySessionTokenDetailed(token, secret, now);
+  return result.ok ? result.payload : null;
+}
+
+export async function verifySessionTokenDetailed(token: string, secret: string, now: number): Promise<SessionTokenVerification> {
   try {
     const [encoded, signature, extra] = token.split(".");
-    if (!encoded || !signature || extra) return null;
+    if (!encoded || !signature || extra) return { ok: false, reason: "invalid" };
     const expected = await hmac(encoded, secret);
     const actual = decodeBase64Url(signature);
-    if (actual.length !== expected.length) return null;
+    if (actual.length !== expected.length) return { ok: false, reason: "invalid" };
     let difference = 0;
     for (let index = 0; index < actual.length; index += 1) difference |= actual[index] ^ expected[index];
-    if (difference !== 0) return null;
+    if (difference !== 0) return { ok: false, reason: "invalid" };
     const payload = JSON.parse(new TextDecoder().decode(decodeBase64Url(encoded))) as SessionTokenPayload;
-    if (!payload.sessionId || !payload.puzzleId || !payload.anonymousId || !payload.nonce || !Number.isInteger(payload.issuedAt)) return null;
-    if (payload.issuedAt > now + 60 || now - payload.issuedAt > 7 * 24 * 60 * 60) return null;
-    return payload;
+    if (
+      typeof payload.sessionId !== "string" || !payload.sessionId ||
+      typeof payload.puzzleId !== "string" || !payload.puzzleId ||
+      typeof payload.anonymousId !== "string" || !payload.anonymousId ||
+      typeof payload.nonce !== "string" || !payload.nonce ||
+      !Number.isInteger(payload.issuedAt)
+    ) {
+      return { ok: false, reason: "invalid" };
+    }
+    if (payload.issuedAt > now + 60) return { ok: false, reason: "invalid" };
+    if (now - payload.issuedAt > 7 * 24 * 60 * 60) return { ok: false, reason: "expired" };
+    return { ok: true, payload };
   } catch {
-    return null;
+    return { ok: false, reason: "invalid" };
   }
 }
