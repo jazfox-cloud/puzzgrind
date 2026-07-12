@@ -41,6 +41,12 @@ export async function POST(request: Request) {
         sessionToken,
         restored: true,
         status: existing.status,
+        boardState: existing.boardState,
+        notes: existing.notes,
+        durationSeconds: existing.durationSeconds,
+        mistakes: existing.mistakes,
+        hintCount: existing.hintCount,
+        maxHintLevel: existing.maxHintLevel,
         result: existing.status === "won" ? {
           durationSeconds: existing.durationSeconds ?? 0,
           mistakes: existing.mistakes,

@@ -71,6 +71,7 @@ export function SudokuGame() {
   const [usedTechniques, setUsedTechniques] = useState<string[]>([]);
   const progressRef = useRef({ values, notes, seconds, mistakes, paused });
   const completionStartedRef = useRef(false);
+  const restoredLocalRef = useRef(false);
 
   useEffect(() => {
     progressRef.current = { values, notes, seconds, mistakes, paused };
@@ -85,6 +86,7 @@ export function SudokuGame() {
       .then((daily) => {
         const initial = [...parseBoard(daily.givens)];
         const saved = loadSavedGame(localStorage, daily.puzzleId, daily.givens);
+        restoredLocalRef.current = Boolean(saved);
         setPuzzle(daily);
         if (saved) {
           setValues([...saved.values]);
@@ -112,9 +114,27 @@ export function SudokuGame() {
       })
       .then(async (response) => {
         if (!response.ok) throw new Error("Unable to start your game session.");
-        const result = await response.json() as { sessionId: string; sessionToken: string; result?: GameResult | null };
+        const result = await response.json() as {
+          boardState?: { values?: number[] };
+          durationSeconds?: number | null;
+          hintCount?: number;
+          maxHintLevel?: 0 | 1 | 2 | 3;
+          mistakes?: number;
+          notes?: number[][];
+          result?: GameResult | null;
+          sessionId: string;
+          sessionToken: string;
+        };
         setSessionId(result.sessionId);
         setSessionToken(result.sessionToken);
+        if (!restoredLocalRef.current && result.boardState?.values?.length === 81 && result.notes?.length === 81) {
+          setValues([...result.boardState.values]);
+          setNotes(result.notes.map((cell) => [...cell]));
+          setSeconds(result.durationSeconds ?? 0);
+          setMistakes(result.mistakes ?? 0);
+          setHintCount(result.hintCount ?? 0);
+          setMaxHintLevel(result.maxHintLevel ?? 0);
+        }
         if (result.result) setServerResult(result.result);
       })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "Unable to load Sudoku."));
@@ -190,7 +210,7 @@ export function SudokuGame() {
   }, [notes, values]);
 
   const inputNumber = useCallback((number: number) => {
-    if (selected === null || !puzzle || paused || complete || puzzle.givens[selected] !== "0") return;
+    if (selected === null || !puzzle || paused || complete || serverResult || puzzle.givens[selected] !== "0") return;
     if (noteMode) {
       const nextNotes = notes.map((cell) => [...cell]);
       nextNotes[selected] = nextNotes[selected].includes(number)
@@ -207,16 +227,16 @@ export function SudokuGame() {
       setMistakes((current) => current + 1);
     }
     commit(nextValues, nextNotes);
-  }, [commit, complete, conflictCells, noteMode, notes, paused, puzzle, selected, values]);
+  }, [commit, complete, conflictCells, noteMode, notes, paused, puzzle, selected, serverResult, values]);
 
   const erase = useCallback(() => {
-    if (selected === null || !puzzle || paused || complete || puzzle.givens[selected] !== "0") return;
+    if (selected === null || !puzzle || paused || complete || serverResult || puzzle.givens[selected] !== "0") return;
     const nextValues = [...values];
     nextValues[selected] = 0;
     const nextNotes = notes.map((cell) => [...cell]);
     nextNotes[selected] = [];
     commit(nextValues, nextNotes);
-  }, [commit, complete, notes, paused, puzzle, selected, values]);
+  }, [commit, complete, notes, paused, puzzle, selected, serverResult, values]);
 
   const undo = useCallback(() => {
     const previous = history.at(-1);
@@ -259,7 +279,7 @@ export function SudokuGame() {
   }, [puzzle]);
 
   const requestHint = useCallback(async (level: 1 | 2 | 3) => {
-    if (!sessionId || values.length !== 81 || paused || complete) return;
+    if (!sessionId || values.length !== 81 || paused || complete || serverResult) return;
     setHintLoading(true);
     setHintError(null);
     try {
@@ -280,7 +300,7 @@ export function SudokuGame() {
     } finally {
       setHintLoading(false);
     }
-  }, [complete, paused, sessionId, values]);
+  }, [complete, paused, serverResult, sessionId, values]);
 
   const saveProgress = useCallback(async () => {
     const current = progressRef.current;
@@ -364,7 +384,7 @@ export function SudokuGame() {
       <section>
         <div className="mb-4 flex items-center justify-between gap-3">
           <div><span className="rounded-full bg-emerald-950 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-white">Medium</span><span className="ml-3 text-sm text-[var(--ink-soft)]">{puzzle.puzzleDate} UTC</span></div>
-          <div className="flex items-center gap-3"><span className="font-mono text-lg font-black">{formatTime(seconds)}</span><button className="rounded-full border border-emerald-950/20 px-4 py-2 font-bold" onClick={() => setPaused((current) => !current)}>{paused ? "Resume" : "Pause"}</button></div>
+          <div className="flex items-center gap-3"><span className="font-mono text-lg font-black">{formatTime(seconds)}</span><button className="rounded-full border border-emerald-950/20 px-4 py-2 font-bold disabled:opacity-40" disabled={Boolean(serverResult)} onClick={() => setPaused((current) => !current)}>{paused ? "Resume" : "Pause"}</button></div>
         </div>
         <div className="mb-3 grid grid-cols-3 gap-2 text-center text-xs"><div className="rounded-xl bg-white/70 p-2"><strong className="block text-base">{filledCount}/81</strong>Filled</div><div className="rounded-xl bg-white/70 p-2"><strong className="block text-base">{mistakes}</strong>Mistakes</div><div className="rounded-xl bg-white/70 p-2"><strong className="block text-base">{hintCount}</strong>Hints</div></div>
         <div className="relative grid aspect-square grid-cols-9 overflow-hidden rounded-xl border-2 border-emerald-950 bg-emerald-950" role="grid" aria-label="Daily Sudoku board">
@@ -382,7 +402,7 @@ export function SudokuGame() {
               conflictCells.has(index) ? "bg-red-100 text-red-800 after:absolute after:right-1 after:top-0 after:content-['!']" : "",
               hint?.targetCells.includes(index) ? "bg-sky-100 ring-2 ring-inset ring-sky-500" : "",
             ].join(" ");
-            return <button aria-label={`Row ${row + 1}, column ${column + 1}${value ? `, ${value}` : ", empty"}`} aria-selected={selectedCell} className={classes} disabled={paused} key={index} onClick={() => setSelected(index)} role="gridcell">
+            return <button aria-label={`Row ${row + 1}, column ${column + 1}${value ? `, ${value}` : ", empty"}`} aria-selected={selectedCell} className={classes} disabled={paused || Boolean(serverResult)} key={index} onClick={() => setSelected(index)} role="gridcell">
               {value || notes[index].length === 0 ? (value || "") : <span className="grid h-full w-full grid-cols-3 text-[9px] leading-none sm:text-xs">{Array.from({ length: 9 }, (_, candidate) => <span className="grid place-items-center" key={candidate}>{notes[index].includes(candidate + 1) ? candidate + 1 : ""}</span>)}</span>}
             </button>;
           })}
@@ -414,7 +434,7 @@ export function SudokuGame() {
             <button className="mt-3 w-full rounded-xl bg-sky-700 px-4 py-3 font-black text-white disabled:opacity-50" disabled={!sessionId || hintLoading} onClick={() => requestHint(1)}>{hintLoading ? "Finding a hint…" : "Get a hint"}</button>
           </>}
         </section>
-        <div className="grid grid-cols-5 gap-2 lg:grid-cols-3">{Array.from({ length: 9 }, (_, offset) => <button className="min-h-12 rounded-xl bg-emerald-950 text-xl font-black text-white" key={offset} onClick={() => inputNumber(offset + 1)}>{offset + 1}</button>)}</div>
+        <div className="grid grid-cols-5 gap-2 lg:grid-cols-3">{Array.from({ length: 9 }, (_, offset) => <button className="min-h-12 rounded-xl bg-emerald-950 text-xl font-black text-white disabled:opacity-40" disabled={Boolean(serverResult)} key={offset} onClick={() => inputNumber(offset + 1)}>{offset + 1}</button>)}</div>
         <div className="grid grid-cols-2 gap-2">
           <button aria-pressed={noteMode} className={`min-h-12 rounded-xl border font-black ${noteMode ? "border-amber-500 bg-amber-200" : "border-emerald-950/20 bg-white/70"}`} onClick={() => setNoteMode((current) => !current)}>Notes {noteMode ? "On" : "Off"}</button>
           <button className="min-h-12 rounded-xl border border-emerald-950/20 bg-white/70 font-black" onClick={erase}>Erase</button>
