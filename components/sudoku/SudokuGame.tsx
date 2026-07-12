@@ -280,6 +280,10 @@ export function SudokuGame() {
 
   const requestHint = useCallback(async (level: 1 | 2 | 3) => {
     if (!sessionId || values.length !== 81 || paused || complete || serverResult) return;
+    if (conflictCells.size > 0) {
+      setHintError("There’s a conflict on the board. Fix the red ! cells before asking for another hint.");
+      return;
+    }
     setHintLoading(true);
     setHintError(null);
     try {
@@ -289,7 +293,12 @@ export function SudokuGame() {
         body: JSON.stringify({ sessionId, board: values.join(""), level }),
       });
       const result = await response.json() as { error?: string; hint?: SudokuHint };
-      if (!response.ok || !result.hint) throw new Error(result.error ?? "Hint unavailable");
+      if (!response.ok || !result.hint) {
+        const message = result.error === "invalid_board"
+          ? "There’s a conflict on the board. Fix the red ! cells before asking for another hint."
+          : "A hint isn’t available for this board yet. Check your entries and try again.";
+        throw new Error(message);
+      }
       setHint(result.hint);
       setSelected(result.hint.targetCells[0] ?? null);
       setHintCount((current) => current + 1);
@@ -300,7 +309,7 @@ export function SudokuGame() {
     } finally {
       setHintLoading(false);
     }
-  }, [complete, paused, serverResult, sessionId, values]);
+  }, [complete, conflictCells, paused, serverResult, sessionId, values]);
 
   const saveProgress = useCallback(async () => {
     const current = progressRef.current;
@@ -365,6 +374,31 @@ export function SudokuGame() {
     }
   }, [puzzle, serverResult]);
 
+  const shareToPlatform = useCallback(async (platform: "facebook" | "instagram" | "linkedin" | "tiktok" | "x") => {
+    if (!puzzle || !serverResult) return;
+    const url = "https://puzzgrind.com/sudoku";
+    const text = [
+      `PuzzGrind Daily Sudoku ${puzzle.puzzleDate}`,
+      `⏱ ${formatTime(serverResult.durationSeconds)} · 💡 ${serverResult.hintCount} · ❌ ${serverResult.mistakes}`,
+    ].join("\n");
+    const destinations = {
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+      x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+    } as const;
+
+    if (platform === "instagram" || platform === "tiktok") {
+      const destination = platform === "instagram" ? "https://www.instagram.com/" : "https://www.tiktok.com/";
+      window.open(destination, "_blank", "noopener,noreferrer");
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      setShareStatus(`Result copied — paste it into ${platform === "instagram" ? "Instagram" : "TikTok"}.`);
+      return;
+    }
+
+    window.open(destinations[platform], "_blank", "noopener,noreferrer");
+    setShareStatus(`Opened ${platform === "x" ? "X" : platform === "facebook" ? "Facebook" : "LinkedIn"}.`);
+  }, [puzzle, serverResult]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (serverResult) return;
@@ -420,12 +454,21 @@ export function SudokuGame() {
             <div className="mt-5 grid grid-cols-2 gap-3 text-sm"><div className="rounded-xl bg-white/10 p-3"><span className="block text-white/60">Time</span><strong className="text-lg">{formatTime(serverResult.durationSeconds)}</strong></div><div className="rounded-xl bg-white/10 p-3"><span className="block text-white/60">Mistakes</span><strong className="text-lg">{serverResult.mistakes}</strong></div><div className="rounded-xl bg-white/10 p-3"><span className="block text-white/60">Hints</span><strong className="text-lg">{serverResult.hintCount}</strong></div><div className="rounded-xl bg-white/10 p-3"><span className="block text-white/60">Best hint</span><strong className="text-lg">{serverResult.maxHintLevel ? `L${serverResult.maxHintLevel}` : "—"}</strong></div></div>
             {serverResult.hintCount === 0 && <p className="mt-4 rounded-full bg-[var(--accent)] px-4 py-2 text-center text-sm font-black text-emerald-950">No Hint</p>}
             {usedTechniques.length > 0 && <p className="mt-4 text-sm text-white/70">Techniques: {usedTechniques.join(", ")}</p>}
-            <button className="mt-5 w-full rounded-xl bg-white px-4 py-3 font-black text-emerald-950" onClick={shareResult}>Share result</button>{shareStatus && <p className="mt-2 text-center text-xs text-white/70">{shareStatus}</p>}
+            <button className="mt-5 w-full rounded-xl bg-white px-4 py-3 font-black text-emerald-950" onClick={shareResult}>Share result</button>
+            <div aria-label="Share to a social platform" className="mt-3 grid grid-cols-5 gap-2">
+              {(["x", "instagram", "linkedin", "tiktok", "facebook"] as const).map((platform) => (
+                <button aria-label={`Share on ${platform === "x" ? "X" : platform[0].toUpperCase() + platform.slice(1)}`} className="min-h-10 rounded-lg border border-white/20 bg-white/10 px-1 text-[11px] font-black text-white transition hover:bg-white/20" key={platform} onClick={() => void shareToPlatform(platform)}>
+                  {platform === "x" ? "X" : platform === "instagram" ? "IG" : platform === "linkedin" ? "in" : platform === "tiktok" ? "TikTok" : "f"}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-center text-[11px] leading-4 text-white/60">Instagram and TikTok copy your result, then open the platform.</p>
+            {shareStatus && <p className="mt-2 text-center text-xs text-white/70">{shareStatus}</p>}
           </div>
           <div className="border-t border-white/10 p-5 text-sm text-white/70">{sample && sample.completions >= 20 ? <><p>Today: {Math.round(sample.completions / Math.max(1, sample.starts) * 100)}% completion rate</p><p>Average time: {formatTime(Math.round(sample.totalCompletionSeconds / sample.completions))}</p></> : <p>Today&apos;s sample is still growing.</p>}<p className="mt-3 font-mono text-white">Next puzzle in {formatCountdown(secondsToNext)}</p></div>
         </section>}
         <section className="rounded-2xl border border-emerald-950/15 bg-white/75 p-4">
-          {hintError && <p className="mb-3 rounded-lg bg-red-100 p-3 text-sm font-bold text-red-900" role="alert">{hintError.replaceAll("_", " ")}</p>}
+          {hintError && <p className="mb-3 rounded-lg bg-red-100 p-3 text-sm font-bold leading-5 text-red-900" role="alert">{hintError}</p>}
           {hint ? <>
             <div className="flex items-center justify-between gap-3"><p className="text-xs font-black uppercase tracking-[0.16em] text-sky-700">Level {hint.level} · {hint.title}</p><button className="text-sm font-bold text-[var(--ink-soft)]" onClick={() => setHint(null)}>Close</button></div>
             <p className="mt-3 text-sm leading-6">{hint.explanation}</p>
