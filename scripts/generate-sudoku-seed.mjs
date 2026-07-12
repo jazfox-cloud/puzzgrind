@@ -60,7 +60,7 @@ if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !Number.isInteger(days) || days < 1 ||
   throw new Error("Use --start=YYYY-MM-DD and --days=1..366");
 }
 
-const statements = ["BEGIN TRANSACTION;"];
+const statements = [];
 const seen = new Set();
 for (let index = 0; index < days; index += 1) {
   const date = dateAt(start, index);
@@ -72,7 +72,6 @@ for (let index = 0; index < days; index += 1) {
   const profile = JSON.stringify({ generator: "symmetry_transform", base: "classic-001" }).replaceAll("'", "''");
   statements.push(`INSERT OR IGNORE INTO sudoku_puzzles (id, puzzle_date, difficulty, givens, solution, technique_profile_json, source_type, source_reference, validation_version, status, published_at) VALUES ('daily-${date}', '${date}', 'medium', '${givens}', '${solution}', '${profile}', 'internal_generated', 'puzzgrind-generator-v1:${date}', 'solver-v1', 'published', unixepoch());`);
 }
-statements.push("COMMIT;");
 const sql = `${statements.join("\n")}\n`;
 const output = argument("output", "");
 if (output) {
