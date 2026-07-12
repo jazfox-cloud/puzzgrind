@@ -4,17 +4,17 @@ Audit date: 2026-07-12 (America/Los_Angeles)
 
 Scope: local repository, GitHub remote state, checked-in Cloudflare configuration, read-only Cloudflare account queries, and live `https://puzzgrind.com` checks.
 
-Baseline commit: `12772de` (`fix: bundle share cards in Cloudflare worker`)
+Baseline commit: `12772de4d5c324c774ed8a988cc3c78a89053914` (`fix: bundle share cards in Cloudflare worker`)
 
 ## 1. Executive Summary
 
 PuzzGrind is already a functioning Phase 0 Sudoku product, not a starter shell. It has a Next.js 16 App Router frontend, a Cloudflare Worker produced by OpenNext, production and staging D1 databases, daily Medium puzzles, local/server recovery, deterministic tiered hints, verified completion, aggregate result statistics, and signed public result sharing.
 
-The repository was clean at audit start. `main`, `origin/main`, and the live GitHub `main` ref all pointed to `12772de`; there were no local-only or remote-only commits and no existing tags. The current code is therefore suitable as a source-code baseline tag target. However, Cloudflare deployment records are upload-based/unknown-source Worker deployments and do not record a Git commit SHA, so the deployed artifact cannot be cryptographically tied to `12772de`. Create `phase0-baseline` on `12772de` only after accepting that provenance limitation, or first add SHA-labelled deployment automation.
+The repository was clean at audit start. `main`, `origin/main`, and the live GitHub `main` ref all pointed to `12772de4d5c324c774ed8a988cc3c78a89053914`; there were no local-only or remote-only commits and no existing tags. This commit is the audited product source baseline and is the required target for the eventual `phase0-baseline` tag; the PR #1 audit-document merge commit must not be used as that tag target. Historical Production Worker deployment records are primarily upload-based or unknown-source and still cannot reliably prove that the deployed artifact matches `12772de4d5c324c774ed8a988cc3c78a89053914`. Separately, PR #1 has now demonstrated Cloudflare Git integration for previews: audit commit `7edba7245290c8c6ea0b4f82661a6e07b15cb4ad` produced both commit-specific and branch-specific Preview deployments. The remaining provenance gap is therefore Production Git SHA traceability and a controlled Production release process, not Preview commit association.
 
 Quality gates are healthy: frozen install, lint, typecheck, 33 unit tests, production build, and the single Playwright E2E test pass. The E2E test initially could not launch because the Playwright browser binary was absent; after installing the declared Chromium runtime it passed without code changes.
 
-The main blockers before SEO/growth work are missing `sitemap.xml`, incomplete `robots.txt`, absent canonical/OG/Twitter metadata on the indexable home and Sudoku pages, no favicon, no custom 404, no Schema.org markup, no deploy-to-commit provenance, and no API rate limiting. The hint endpoint also authorizes only by a user-supplied session ID, unlike save/complete/share endpoints, which require an HMAC session token.
+The main blockers before SEO/growth work are missing `sitemap.xml`, incomplete `robots.txt`, absent canonical/OG/Twitter metadata on the indexable home and Sudoku pages, no favicon, no custom 404, no Schema.org markup, incomplete Production deploy-to-commit provenance, and no API rate limiting. PR Preview deployments already have Git commit association. The hint endpoint also authorizes only by a user-supplied session ID, unlike save/complete/share endpoints, which require an HMAC session token.
 
 ## 2. Current Architecture
 
@@ -102,8 +102,8 @@ Test coverage risk: unit coverage is strong for Sudoku logic, storage, D1 reposi
 - Compatibility date is `2026-07-11` with `nodejs_compat`; observability is enabled.
 - Production Worker name is `puzzgrind`; staging resolves to `puzzgrind-staging` and sets `ALLOW_STAGING_PUZZLE_FALLBACK=true`.
 - Production and staging use distinct D1 bindings and both have `SESSION_SIGNING_SECRET` configured by name.
-- Build command is effectively `opennextjs-cloudflare build`; deployment is direct Worker upload. This repository has no Cloudflare Pages build command, output directory, Git Provider, preview branch mapping, or production branch mapping.
-- `pnpm deploy` deploys production from whichever local checkout invokes it; `pnpm deploy:staging` deploys staging. Nothing checked in enforces `main` for production or PR branches for previews.
+- The checked-in manual build command is effectively `opennextjs-cloudflare build`; `pnpm deploy` and `pnpm deploy:staging` perform direct Worker uploads. This is a Workers deployment, not a Cloudflare Pages project, so Pages-specific build/output terminology does not apply.
+- Cloudflare Git integration is active for pull requests even though its settings are not represented in `wrangler.jsonc`: PR #1 automatically produced commit and branch Preview URLs tied to commit `7edba7245290c8c6ea0b4f82661a6e07b15cb4ad`. The checked-in configuration still does not document or enforce the Production branch, approval, or Git-SHA release policy.
 
 ### Live/account findings
 
@@ -111,12 +111,13 @@ Test coverage risk: unit coverage is strong for Sudoku logic, storage, D1 reposi
 - Production and staging deployment histories exist. Sources are recorded as `Upload`, `Unknown (deployment)`, or `Secret Change`, not GitHub commit SHAs.
 - Latest queried production deployment: 2026-07-12 06:08:16 UTC, version `828584e4-…`.
 - Latest queried staging deployment: 2026-07-12 06:00:02 UTC, version `055e26ed-…`.
+- After the initial audit, Cloudflare Bot reported a successful Git-integrated PR Preview for audit commit `7edba7245290c8c6ea0b4f82661a6e07b15cb4ad`: commit Preview `https://276b17b8-puzzgrind.jazfoxbrook.workers.dev` and branch Preview `https://chore-phase0-baseline-audit-puzzgrind.jazfoxbrook.workers.dev`.
 - `https://puzzgrind.com/`, `/sudoku`, `/api/health`, and `/api/health/db` returned HTTP 200. D1 health reported `connected`, four schema tables, and 120 puzzles.
 
 ### Deployment risks
 
-1. No commit-to-deployment provenance: a live version cannot be tied to `12772de` from Cloudflare records.
-2. No branch-controlled production/preview policy: any authorized local checkout can run a production deploy.
+1. Incomplete Production commit-to-deployment provenance: historical Production records do not reliably tie the live artifact to `12772de4d5c324c774ed8a988cc3c78a89053914`. This does not apply to PR Preview, where Cloudflare has demonstrated commit- and branch-specific association for `7edba7245290c8c6ea0b4f82661a6e07b15cb4ad`.
+2. No documented, source-controlled Production release policy: authorized local checkouts can still invoke a direct Production deploy, and the audit found no enforced Production branch/approval/SHA-recording path. PR Preview branch mapping is working and is not the gap.
 3. No CI workflow is checked in for repeatable build, migration, deploy, smoke test, or rollback evidence.
 4. D1 database identifiers are intentionally public configuration, not secrets; the actual HMAC secret is correctly absent from Git and stored as Worker secret text.
 5. Local `next build` validates Next output but does not build `.open-next`; the deployment scripts do. A CI gate should also run `opennextjs-cloudflare build`.
@@ -185,17 +186,17 @@ Before treating Phase 0 as a launch-ready baseline:
 4. Require the signed session token for hints and validate the token/session nonce relationship.
 5. Add abuse controls for D1-writing and image-generation endpoints.
 6. Add nested notes/payload-size validation.
-7. Establish a reproducible Git SHA → Worker version deployment path with protected production source/branch rules and smoke checks.
+7. Extend the working Git-integrated PR Preview path into a reproducible, protected Production Git SHA → Worker version release path with approvals and smoke checks.
 8. Expand E2E coverage beyond the homepage so core gameplay and Worker/D1 integrations are release-gated.
 
 The missing difficulty selector and random “new game” are product-scope gaps, not blockers for the current one-daily-Medium specification.
 
 ## 10. Recommended Next Tasks
 
-1. **Tag policy:** after this audit is reviewed, create annotated `phase0-baseline` at `12772de` if the intended baseline is the pre-audit product code. Document that the historical live Worker SHA is unproven.
+1. **Tag policy:** after PR #1 is reviewed and merged, create annotated `phase0-baseline` specifically at `12772de4d5c324c774ed8a988cc3c78a89053914`. This is the audited product source baseline; do not tag the PR #1 audit-document merge commit. Record that historical Production artifact consistency with this commit remains unproven, while PR Preview commit association is confirmed.
 2. **Security patch:** token-protect the hint route, validate notes deeply, impose body-size limits, and add Cloudflare/application rate limits with tests.
 3. **SEO foundation:** implement `app/robots.ts`, `app/sitemap.ts`, metadata canonicals, default OG/Twitter image, icons/manifest as needed, Schema.org `WebSite`/`VideoGame` or `Game`-appropriate markup after validating the schema choice, and `app/not-found.tsx`.
-4. **Deployment pipeline:** add CI for frozen install, lint, typecheck, unit, E2E, Next build, OpenNext build, migration safety, staging deploy/smoke, approval, production deploy, and Worker-version/SHA recording.
+4. **Deployment pipeline:** retain the working Git-integrated PR Preview flow and add controlled Production CI for frozen install, lint, typecheck, unit, E2E, Next build, OpenNext build, migration safety, staging deploy/smoke, approval, production deploy, and Worker-version/SHA recording.
 5. **Integration coverage:** test daily fetch, input/notes, conflicts, undo/redo, pause/recovery, all hint levels, successful and rejected completion, signed share pages, and production-like OpenNext/D1 behavior.
 6. **Performance measurement:** capture route-level compressed JS and Lighthouse/Web Vitals in staging; then decide whether to remove `force-dynamic` from `/sudoku` and split `SudokuGame` based on measured benefit.
 7. **Operational controls:** define security headers, host allowlist/canonical redirect, health endpoint exposure, Worker rollback procedure, secret rotation, D1 backup/recovery, and daily puzzle publication monitoring.
