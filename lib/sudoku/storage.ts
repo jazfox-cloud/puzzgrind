@@ -1,6 +1,6 @@
 import { findGivenViolations, parseBoard } from "./index";
 
-export const GAME_SAVE_VERSION = 1;
+export const GAME_SAVE_VERSION = 2;
 export const ANONYMOUS_ID_KEY = "puzzgrind_anonymous_id";
 
 export type GameSnapshot = {
@@ -11,6 +11,9 @@ export type GameSnapshot = {
 export type SavedGame = GameSnapshot & {
   future: GameSnapshot[];
   history: GameSnapshot[];
+  hintCount: number;
+  maxHintLevel: 0 | 1 | 2 | 3;
+  mistakes: number;
   noteMode: boolean;
   paused: boolean;
   puzzleId: string;
@@ -64,6 +67,9 @@ export function parseSavedGame(raw: string, puzzleId: string, givens: string): S
       !Array.isArray(value.history) || !value.history.every(validSnapshot) ||
       !Array.isArray(value.future) || !value.future.every(validSnapshot) ||
       typeof value.noteMode !== "boolean" || typeof value.paused !== "boolean" ||
+      !Number.isInteger(value.mistakes) || (value.mistakes ?? -1) < 0 ||
+      !Number.isInteger(value.hintCount) || (value.hintCount ?? -1) < 0 ||
+      ![0, 1, 2, 3].includes(value.maxHintLevel ?? -1) ||
       !Number.isInteger(value.seconds) || (value.seconds ?? -1) < 0 ||
       !Number.isInteger(value.savedAt) || (value.savedAt ?? -1) < 0 ||
       !(value.selected === null || (Number.isInteger(value.selected) && (value.selected ?? -1) >= 0 && (value.selected ?? 81) < 81))

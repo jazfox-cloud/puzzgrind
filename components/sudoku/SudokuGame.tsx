@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { findConflicts, isCompleteValidBoard, parseBoard } from "@/lib/sudoku";
 import {
@@ -14,13 +14,34 @@ import type { SudokuHint } from "@/lib/sudoku/hints";
 
 type DailyPuzzle = {
   difficulty: "medium";
+  expiresAt: string;
   givens: string;
   puzzleDate: string;
   puzzleId: string;
 };
 
+export type GameResult = {
+  durationSeconds: number;
+  hintCount: number;
+  maxHintLevel: number;
+  mistakes: number;
+};
+
+type CompletionSample = {
+  completions: number;
+  starts: number;
+  totalCompletionSeconds: number;
+  totalHints: number;
+};
+
 function formatTime(seconds: number): string {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function formatCountdown(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 export function SudokuGame() {
@@ -36,9 +57,24 @@ export function SudokuGame() {
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [hint, setHint] = useState<SudokuHint | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
   const [hintError, setHintError] = useState<string | null>(null);
+  const [mistakes, setMistakes] = useState(0);
+  const [hintCount, setHintCount] = useState(0);
+  const [maxHintLevel, setMaxHintLevel] = useState<0 | 1 | 2 | 3>(0);
+  const [serverResult, setServerResult] = useState<GameResult | null>(null);
+  const [sample, setSample] = useState<CompletionSample | null>(null);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const [secondsToNext, setSecondsToNext] = useState(0);
+  const [usedTechniques, setUsedTechniques] = useState<string[]>([]);
+  const progressRef = useRef({ values, notes, seconds, mistakes, paused });
+  const completionStartedRef = useRef(false);
+
+  useEffect(() => {
+    progressRef.current = { values, notes, seconds, mistakes, paused };
+  }, [mistakes, notes, paused, seconds, values]);
 
   useEffect(() => {
     fetch("/api/sudoku/today")
@@ -59,6 +95,9 @@ export function SudokuGame() {
           setNoteMode(saved.noteMode);
           setHistory(saved.history.map((snapshot) => ({ values: [...snapshot.values], notes: snapshot.notes.map((cell) => [...cell]) })));
           setFuture(saved.future.map((snapshot) => ({ values: [...snapshot.values], notes: snapshot.notes.map((cell) => [...cell]) })));
+          setMistakes(saved.mistakes);
+          setHintCount(saved.hintCount);
+          setMaxHintLevel(saved.maxHintLevel);
         } else {
           setValues(initial);
           setNotes(Array.from({ length: 81 }, () => []));
@@ -73,8 +112,10 @@ export function SudokuGame() {
       })
       .then(async (response) => {
         if (!response.ok) throw new Error("Unable to start your game session.");
-        const result = await response.json() as { sessionId: string };
+        const result = await response.json() as { sessionId: string; sessionToken: string; result?: GameResult | null };
         setSessionId(result.sessionId);
+        setSessionToken(result.sessionToken);
+        if (result.result) setServerResult(result.result);
       })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "Unable to load Sudoku."));
   }, []);
@@ -82,7 +123,7 @@ export function SudokuGame() {
   const currentSave = useCallback((): SavedGame | null => {
     if (!puzzle || !hydrated || values.length !== 81 || notes.length !== 81) return null;
     return {
-      version: 1,
+      version: 2,
       puzzleId: puzzle.puzzleId,
       values: [...values],
       notes: notes.map((cell) => [...cell]),
@@ -92,9 +133,12 @@ export function SudokuGame() {
       noteMode,
       history: history.slice(-100).map((snapshot) => ({ values: [...snapshot.values], notes: snapshot.notes.map((cell) => [...cell]) })),
       future: future.slice(0, 100).map((snapshot) => ({ values: [...snapshot.values], notes: snapshot.notes.map((cell) => [...cell]) })),
+      mistakes,
+      hintCount,
+      maxHintLevel,
       savedAt: Date.now(),
     };
-  }, [future, history, hydrated, noteMode, notes, paused, puzzle, seconds, selected, values]);
+  }, [future, hintCount, history, hydrated, maxHintLevel, mistakes, noteMode, notes, paused, puzzle, seconds, selected, values]);
 
   useEffect(() => {
     const game = currentSave();
@@ -122,6 +166,15 @@ export function SudokuGame() {
     return new Set(findConflicts(values as ReturnType<typeof parseBoard>).flatMap((conflict) => conflict.cells));
   }, [values]);
   const complete = values.length === 81 && isCompleteValidBoard(values as ReturnType<typeof parseBoard>);
+  const filledCount = values.filter((value) => value !== 0).length;
+
+  useEffect(() => {
+    if (!puzzle) return;
+    const update = () => setSecondsToNext(Math.max(0, Math.floor((new Date(puzzle.expiresAt).getTime() - Date.now()) / 1000)));
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, [puzzle]);
 
   useEffect(() => {
     if (!puzzle || paused || complete) return;
@@ -150,8 +203,11 @@ export function SudokuGame() {
     nextValues[selected] = number;
     const nextNotes = notes.map((cell) => [...cell]);
     nextNotes[selected] = [];
+    if (findConflicts(nextValues as ReturnType<typeof parseBoard>).length > 0 && !conflictCells.has(selected)) {
+      setMistakes((current) => current + 1);
+    }
     commit(nextValues, nextNotes);
-  }, [commit, complete, noteMode, notes, paused, puzzle, selected, values]);
+  }, [commit, complete, conflictCells, noteMode, notes, paused, puzzle, selected, values]);
 
   const erase = useCallback(() => {
     if (selected === null || !puzzle || paused || complete || puzzle.givens[selected] !== "0") return;
@@ -192,6 +248,14 @@ export function SudokuGame() {
     setSeconds(0);
     setPaused(false);
     setHint(null);
+    setMistakes(0);
+    setHintCount(0);
+    setMaxHintLevel(0);
+    setServerResult(null);
+    setSample(null);
+    setShareStatus(null);
+    setUsedTechniques([]);
+    completionStartedRef.current = false;
   }, [puzzle]);
 
   const requestHint = useCallback(async (level: 1 | 2 | 3) => {
@@ -208,12 +272,78 @@ export function SudokuGame() {
       if (!response.ok || !result.hint) throw new Error(result.error ?? "Hint unavailable");
       setHint(result.hint);
       setSelected(result.hint.targetCells[0] ?? null);
+      setHintCount((current) => current + 1);
+      setMaxHintLevel((current) => Math.max(current, level) as 0 | 1 | 2 | 3);
+      setUsedTechniques((current) => current.includes(result.hint!.title) ? current : [...current, result.hint!.title]);
     } catch (cause) {
       setHintError(cause instanceof Error ? cause.message : "Hint unavailable");
     } finally {
       setHintLoading(false);
     }
   }, [complete, paused, sessionId, values]);
+
+  const saveProgress = useCallback(async () => {
+    const current = progressRef.current;
+    if (!sessionToken || current.values.length !== 81 || current.notes.length !== 81 || serverResult) return;
+    await fetch("/api/sudoku/session/save", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: sessionToken, board: current.values.join(""), notes: current.notes, elapsedSeconds: current.seconds, mistakes: current.mistakes, paused: current.paused }),
+    });
+  }, [serverResult, sessionToken]);
+
+  useEffect(() => {
+    if (!sessionToken || !hydrated) return;
+    const timeout = window.setTimeout(() => void saveProgress(), 700);
+    return () => window.clearTimeout(timeout);
+  }, [history.length, hydrated, noteMode, paused, saveProgress, sessionToken]);
+
+  useEffect(() => {
+    if (!sessionToken || !hydrated || paused || complete) return;
+    const interval = window.setInterval(() => void saveProgress(), 15_000);
+    return () => window.clearInterval(interval);
+  }, [complete, hydrated, paused, saveProgress, sessionToken]);
+
+  useEffect(() => {
+    if (!complete || !sessionToken || serverResult || completionStartedRef.current) return;
+    completionStartedRef.current = true;
+    fetch("/api/sudoku/session/complete", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: sessionToken, board: values.join(""), notes, elapsedSeconds: Math.max(1, seconds), mistakes }),
+    }).then(async (response) => {
+      const payload = await response.json() as { error?: string; result?: GameResult; sample?: CompletionSample | null };
+      if (!response.ok || !payload.result) throw new Error(payload.error ?? "Completion could not be verified");
+      setServerResult(payload.result);
+      setSample(payload.sample ?? null);
+    }).catch((cause: unknown) => {
+      completionStartedRef.current = false;
+      setError(cause instanceof Error ? cause.message : "Completion could not be verified");
+    });
+  }, [complete, mistakes, notes, seconds, serverResult, sessionToken, values]);
+
+  const shareResult = useCallback(async () => {
+    if (!puzzle || !serverResult) return;
+    const text = [
+      "PuzzGrind Daily Sudoku",
+      puzzle.puzzleDate,
+      "Medium",
+      `⏱ ${formatTime(serverResult.durationSeconds)}`,
+      `💡 ${serverResult.hintCount} hint${serverResult.hintCount === 1 ? "" : "s"}`,
+      `❌ ${serverResult.mistakes} mistake${serverResult.mistakes === 1 ? "" : "s"}`,
+      "https://puzzgrind.com/sudoku",
+    ].join("\n");
+    try {
+      const usedNativeShare = typeof navigator.share === "function";
+      if (usedNativeShare) await navigator.share({ title: "PuzzGrind Daily Sudoku", text, url: "https://puzzgrind.com/sudoku" });
+      else await navigator.clipboard.writeText(text);
+      setShareStatus(usedNativeShare ? "Shared" : "Copied to clipboard");
+    } catch (cause) {
+      if (cause instanceof DOMException && cause.name === "AbortError") return;
+      await navigator.clipboard.writeText(text);
+      setShareStatus("Copied to clipboard");
+    }
+  }, [puzzle, serverResult]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -233,9 +363,10 @@ export function SudokuGame() {
     <div className="grid gap-8 lg:grid-cols-[minmax(0,36rem)_18rem]">
       <section>
         <div className="mb-4 flex items-center justify-between gap-3">
-          <div><span className="font-black">Medium</span><span className="ml-3 text-sm text-[var(--ink-soft)]">{puzzle.puzzleDate} UTC</span></div>
+          <div><span className="rounded-full bg-emerald-950 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-white">Medium</span><span className="ml-3 text-sm text-[var(--ink-soft)]">{puzzle.puzzleDate} UTC</span></div>
           <div className="flex items-center gap-3"><span className="font-mono text-lg font-black">{formatTime(seconds)}</span><button className="rounded-full border border-emerald-950/20 px-4 py-2 font-bold" onClick={() => setPaused((current) => !current)}>{paused ? "Resume" : "Pause"}</button></div>
         </div>
+        <div className="mb-3 grid grid-cols-3 gap-2 text-center text-xs"><div className="rounded-xl bg-white/70 p-2"><strong className="block text-base">{filledCount}/81</strong>Filled</div><div className="rounded-xl bg-white/70 p-2"><strong className="block text-base">{mistakes}</strong>Mistakes</div><div className="rounded-xl bg-white/70 p-2"><strong className="block text-base">{hintCount}</strong>Hints</div></div>
         <div className="relative grid aspect-square grid-cols-9 overflow-hidden rounded-xl border-2 border-emerald-950 bg-emerald-950" role="grid" aria-label="Daily Sudoku board">
           {values.map((value, index) => {
             const given = puzzle.givens[index] !== "0";
@@ -257,11 +388,21 @@ export function SudokuGame() {
           })}
           {paused && <div className="absolute inset-0 z-20 grid place-items-center bg-[#f6f3ea]/95"><p className="text-2xl font-black">Paused</p></div>}
         </div>
-        {complete && <div className="mt-4 rounded-2xl bg-emerald-100 p-5 text-center"><p className="text-xl font-black">Puzzle complete!</p><p className="mt-1 text-sm">Time {formatTime(seconds)} · No answer was revealed.</p></div>}
+        {complete && !serverResult && <div className="mt-4 rounded-2xl bg-emerald-100 p-5 text-center"><p className="text-xl font-black">Checking your solution…</p><p className="mt-1 text-sm">The server is verifying the final board.</p></div>}
         {conflictCells.size > 0 && <p className="mt-3 font-bold text-red-800" role="alert">Conflict detected — cells marked with ! repeat a number.</p>}
       </section>
 
       <aside className="space-y-4">
+        {serverResult && <section className="overflow-hidden rounded-3xl bg-emerald-950 text-white shadow-xl shadow-emerald-950/15">
+          <div className="bg-[radial-gradient(circle_at_top_right,_rgba(219,255,110,.45),_transparent_45%)] p-6">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--accent)]">Verified result</p><h2 className="mt-2 text-3xl font-black">Puzzle complete</h2>
+            <div className="mt-5 grid grid-cols-2 gap-3 text-sm"><div className="rounded-xl bg-white/10 p-3"><span className="block text-white/60">Time</span><strong className="text-lg">{formatTime(serverResult.durationSeconds)}</strong></div><div className="rounded-xl bg-white/10 p-3"><span className="block text-white/60">Mistakes</span><strong className="text-lg">{serverResult.mistakes}</strong></div><div className="rounded-xl bg-white/10 p-3"><span className="block text-white/60">Hints</span><strong className="text-lg">{serverResult.hintCount}</strong></div><div className="rounded-xl bg-white/10 p-3"><span className="block text-white/60">Best hint</span><strong className="text-lg">{serverResult.maxHintLevel ? `L${serverResult.maxHintLevel}` : "—"}</strong></div></div>
+            {serverResult.hintCount === 0 && <p className="mt-4 rounded-full bg-[var(--accent)] px-4 py-2 text-center text-sm font-black text-emerald-950">No Hint</p>}
+            {usedTechniques.length > 0 && <p className="mt-4 text-sm text-white/70">Techniques: {usedTechniques.join(", ")}</p>}
+            <button className="mt-5 w-full rounded-xl bg-white px-4 py-3 font-black text-emerald-950" onClick={shareResult}>Share result</button>{shareStatus && <p className="mt-2 text-center text-xs text-white/70">{shareStatus}</p>}
+          </div>
+          <div className="border-t border-white/10 p-5 text-sm text-white/70">{sample && sample.completions >= 20 ? <><p>Today: {Math.round(sample.completions / Math.max(1, sample.starts) * 100)}% completion rate</p><p>Average time: {formatTime(Math.round(sample.totalCompletionSeconds / sample.completions))}</p></> : <p>Today&apos;s sample is still growing.</p>}<p className="mt-3 font-mono text-white">Next puzzle in {formatCountdown(secondsToNext)}</p></div>
+        </section>}
         <section className="rounded-2xl border border-emerald-950/15 bg-white/75 p-4">
           {hintError && <p className="mb-3 rounded-lg bg-red-100 p-3 text-sm font-bold text-red-900" role="alert">{hintError.replaceAll("_", " ")}</p>}
           {hint ? <>
@@ -279,7 +420,7 @@ export function SudokuGame() {
           <button className="min-h-12 rounded-xl border border-emerald-950/20 bg-white/70 font-black" onClick={erase}>Erase</button>
           <button className="min-h-12 rounded-xl border border-emerald-950/20 bg-white/70 font-black disabled:opacity-40" disabled={!history.length} onClick={undo}>Undo</button>
           <button className="min-h-12 rounded-xl border border-emerald-950/20 bg-white/70 font-black disabled:opacity-40" disabled={!future.length} onClick={redo}>Redo</button>
-          <button className="col-span-2 min-h-12 rounded-xl border border-red-900/20 bg-red-50 font-black text-red-900" onClick={restart}>Restart puzzle</button>
+          <button className="col-span-2 min-h-12 rounded-xl border border-red-900/20 bg-red-50 font-black text-red-900 disabled:cursor-not-allowed disabled:opacity-40" disabled={Boolean(serverResult)} onClick={restart}>{serverResult ? "Completed" : "Restart puzzle"}</button>
         </div>
         <p className="text-sm leading-6 text-[var(--ink-soft)]">Keyboard: 1–9 to enter, N for notes, Delete to erase, Ctrl/⌘+Z to undo.</p>
       </aside>

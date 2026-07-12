@@ -22,6 +22,20 @@ export class SudokuStatsRepository {
     }
   }
 
+  async recordStart(puzzleId: string, now: number): Promise<void> {
+    try {
+      await this.db.prepare(`
+        INSERT INTO sudoku_puzzle_stats (puzzle_id, start_count, updated_at)
+        VALUES (?, 1, ?)
+        ON CONFLICT(puzzle_id) DO UPDATE SET
+          start_count = start_count + 1,
+          updated_at = excluded.updated_at
+      `).bind(puzzleId, now).run();
+    } catch (error) {
+      throw toDatabaseError(error, "Recording a Sudoku start");
+    }
+  }
+
   async findByPuzzleId(puzzleId: string): Promise<SudokuPuzzleStats | null> {
     try {
       const row = await this.db

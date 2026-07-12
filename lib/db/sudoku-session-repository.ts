@@ -88,4 +88,38 @@ export class SudokuSessionRepository {
       throw toDatabaseError(error, "Recording a Sudoku hint");
     }
   }
+
+  async saveProgress(input: {
+    boardState: unknown;
+    durationSeconds: number;
+    id: string;
+    mistakes: number;
+    notes: unknown;
+    now: number;
+    status: "in_progress" | "paused";
+  }): Promise<void> {
+    try {
+      await this.db.prepare(`
+        UPDATE sudoku_sessions
+        SET board_state_json = ?, notes_json = ?, mistakes = max(mistakes, ?),
+            duration_seconds = ?, status = ?, updated_at = ?
+        WHERE id = ? AND status NOT IN ('won', 'rejected')
+      `).bind(
+        JSON.stringify(input.boardState), JSON.stringify(input.notes), input.mistakes,
+        input.durationSeconds, input.status, input.now, input.id,
+      ).run();
+    } catch (error) {
+      throw toDatabaseError(error, "Saving Sudoku progress");
+    }
+  }
+
+  async refreshNonce(id: string, nonce: string, now: number): Promise<void> {
+    try {
+      await this.db.prepare(`
+        UPDATE sudoku_sessions SET challenge_nonce = ?, updated_at = ? WHERE id = ?
+      `).bind(nonce, now, id).run();
+    } catch (error) {
+      throw toDatabaseError(error, "Refreshing a Sudoku session nonce");
+    }
+  }
 }

@@ -23,5 +23,6 @@ export interface D1PreparedStatementLike {
 }
 
 export interface D1DatabaseLike {
+  batch(statements: D1PreparedStatementLike[]): Promise<D1RunResult[]>;
   prepare(query: string): D1PreparedStatementLike;
 }

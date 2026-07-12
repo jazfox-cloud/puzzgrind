@@ -89,4 +89,8 @@ export class FakeD1Database implements D1DatabaseLike {
     this.statements.push(capture);
     return new FakePreparedStatement(capture, result);
   }
+
+  async batch(statements: D1PreparedStatementLike[]): Promise<D1RunResult[]> {
+    return Promise.all(statements.map((statement) => statement.run()));
+  }
 }

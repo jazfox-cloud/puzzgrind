@@ -1,7 +1,8 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextResponse } from "next/server";
 
-import { SudokuSessionRepository } from "@/lib/db";
+import { SudokuSessionRepository, SudokuStatsRepository } from "@/lib/db";
+import { createSessionToken } from "@/lib/security/session-token";
 import { parseBoard } from "@/lib/sudoku";
 import { readDailyPuzzle, utcDate } from "@/lib/sudoku/daily";
 
@@ -28,13 +29,28 @@ export async function POST(request: Request) {
     if (!puzzle) return NextResponse.json({ error: "daily_puzzle_unavailable" }, { status: 404 });
     const repository = new SudokuSessionRepository(db);
     const existing = await repository.findByAnonymousPuzzle(anonymousId, puzzle.puzzleId);
+    const now = Math.floor(Date.now() / 1000);
+    const challengeNonce = crypto.randomUUID();
     if (existing) {
-      return NextResponse.json({ sessionId: existing.id, restored: true, status: existing.status });
+      await repository.refreshNonce(existing.id, challengeNonce, now);
+      const sessionToken = await createSessionToken({
+        sessionId: existing.id, puzzleId: puzzle.puzzleId, anonymousId, issuedAt: now, nonce: challengeNonce,
+      }, env.SESSION_SIGNING_SECRET);
+      return NextResponse.json({
+        sessionId: existing.id,
+        sessionToken,
+        restored: true,
+        status: existing.status,
+        result: existing.status === "won" ? {
+          durationSeconds: existing.durationSeconds ?? 0,
+          mistakes: existing.mistakes,
+          hintCount: existing.hintCount,
+          maxHintLevel: existing.maxHintLevel,
+        } : null,
+      });
     }
 
-    const now = Math.floor(Date.now() / 1000);
     const sessionId = crypto.randomUUID();
-    const challengeNonce = crypto.randomUUID();
     await repository.create({
       id: sessionId,
       anonymousId,
@@ -51,7 +67,11 @@ export async function POST(request: Request) {
       completedAt: null,
       updatedAt: now,
     });
-    return NextResponse.json({ sessionId, challengeNonce, restored: false, status: "started" }, { status: 201 });
+    await new SudokuStatsRepository(db).recordStart(puzzle.puzzleId, now);
+    const sessionToken = await createSessionToken({
+      sessionId, puzzleId: puzzle.puzzleId, anonymousId, issuedAt: now, nonce: challengeNonce,
+    }, env.SESSION_SIGNING_SECRET);
+    return NextResponse.json({ sessionId, sessionToken, restored: false, status: "started" }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "session_start_failed" }, { status: 503 });
   }
