@@ -10,6 +10,7 @@ import {
   saveGame,
 } from "@/lib/sudoku/storage";
 import type { GameSnapshot, SavedGame } from "@/lib/sudoku/storage";
+import type { SudokuHint } from "@/lib/sudoku/hints";
 
 type DailyPuzzle = {
   difficulty: "medium";
@@ -34,6 +35,10 @@ export function SudokuGame() {
   const [paused, setPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [hint, setHint] = useState<SudokuHint | null>(null);
+  const [hintLoading, setHintLoading] = useState(false);
+  const [hintError, setHintError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/sudoku/today")
@@ -65,6 +70,11 @@ export function SudokuGame() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ anonymousId }),
         });
+      })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to start your game session.");
+        const result = await response.json() as { sessionId: string };
+        setSessionId(result.sessionId);
       })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "Unable to load Sudoku."));
   }, []);
@@ -181,7 +191,29 @@ export function SudokuGame() {
     setFuture([]);
     setSeconds(0);
     setPaused(false);
+    setHint(null);
   }, [puzzle]);
+
+  const requestHint = useCallback(async (level: 1 | 2 | 3) => {
+    if (!sessionId || values.length !== 81 || paused || complete) return;
+    setHintLoading(true);
+    setHintError(null);
+    try {
+      const response = await fetch("/api/sudoku/hint", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId, board: values.join(""), level }),
+      });
+      const result = await response.json() as { error?: string; hint?: SudokuHint };
+      if (!response.ok || !result.hint) throw new Error(result.error ?? "Hint unavailable");
+      setHint(result.hint);
+      setSelected(result.hint.targetCells[0] ?? null);
+    } catch (cause) {
+      setHintError(cause instanceof Error ? cause.message : "Hint unavailable");
+    } finally {
+      setHintLoading(false);
+    }
+  }, [complete, paused, sessionId, values]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -217,6 +249,7 @@ export function SudokuGame() {
               given ? "font-black text-emerald-950" : "font-bold text-emerald-700",
               selectedCell ? "z-10 outline-4 outline-amber-400 outline" : "",
               conflictCells.has(index) ? "bg-red-100 text-red-800 after:absolute after:right-1 after:top-0 after:content-['!']" : "",
+              hint?.targetCells.includes(index) ? "bg-sky-100 ring-2 ring-inset ring-sky-500" : "",
             ].join(" ");
             return <button aria-label={`Row ${row + 1}, column ${column + 1}${value ? `, ${value}` : ", empty"}`} aria-selected={selectedCell} className={classes} disabled={paused} key={index} onClick={() => setSelected(index)} role="gridcell">
               {value || notes[index].length === 0 ? (value || "") : <span className="grid h-full w-full grid-cols-3 text-[9px] leading-none sm:text-xs">{Array.from({ length: 9 }, (_, candidate) => <span className="grid place-items-center" key={candidate}>{notes[index].includes(candidate + 1) ? candidate + 1 : ""}</span>)}</span>}
@@ -229,6 +262,17 @@ export function SudokuGame() {
       </section>
 
       <aside className="space-y-4">
+        <section className="rounded-2xl border border-emerald-950/15 bg-white/75 p-4">
+          {hintError && <p className="mb-3 rounded-lg bg-red-100 p-3 text-sm font-bold text-red-900" role="alert">{hintError.replaceAll("_", " ")}</p>}
+          {hint ? <>
+            <div className="flex items-center justify-between gap-3"><p className="text-xs font-black uppercase tracking-[0.16em] text-sky-700">Level {hint.level} · {hint.title}</p><button className="text-sm font-bold text-[var(--ink-soft)]" onClick={() => setHint(null)}>Close</button></div>
+            <p className="mt-3 text-sm leading-6">{hint.explanation}</p>
+            {hint.level < 3 && <button className="mt-4 w-full rounded-xl bg-sky-700 px-4 py-3 font-black text-white disabled:opacity-50" disabled={hintLoading} onClick={() => requestHint((hint.level + 1) as 2 | 3)}>{hintLoading ? "Thinking…" : "Explain more"}</button>}
+          </> : <>
+            <p className="font-black">Need a nudge?</p><p className="mt-1 text-sm leading-5 text-[var(--ink-soft)]">Hints explain the logic in three steps and never fill the board for you.</p>
+            <button className="mt-3 w-full rounded-xl bg-sky-700 px-4 py-3 font-black text-white disabled:opacity-50" disabled={!sessionId || hintLoading} onClick={() => requestHint(1)}>{hintLoading ? "Finding a hint…" : "Get a hint"}</button>
+          </>}
+        </section>
         <div className="grid grid-cols-5 gap-2 lg:grid-cols-3">{Array.from({ length: 9 }, (_, offset) => <button className="min-h-12 rounded-xl bg-emerald-950 text-xl font-black text-white" key={offset} onClick={() => inputNumber(offset + 1)}>{offset + 1}</button>)}</div>
         <div className="grid grid-cols-2 gap-2">
           <button aria-pressed={noteMode} className={`min-h-12 rounded-xl border font-black ${noteMode ? "border-amber-500 bg-amber-200" : "border-emerald-950/20 bg-white/70"}`} onClick={() => setNoteMode((current) => !current)}>Notes {noteMode ? "On" : "Off"}</button>

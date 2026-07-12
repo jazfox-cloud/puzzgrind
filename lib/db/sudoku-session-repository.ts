@@ -59,4 +59,33 @@ export class SudokuSessionRepository {
       throw toDatabaseError(error, "Reading a Sudoku session");
     }
   }
+
+  async findById(id: string): Promise<SudokuSession | null> {
+    try {
+      const row = await this.db
+        .prepare(`SELECT ${sessionColumns} FROM sudoku_sessions WHERE id = ? LIMIT 1`)
+        .bind(id)
+        .first<SessionRow>();
+      return row ? mapSessionRow(row) : null;
+    } catch (error) {
+      throw toDatabaseError(error, "Reading a Sudoku session by ID");
+    }
+  }
+
+  async recordHint(id: string, level: 1 | 2 | 3, now: number): Promise<void> {
+    try {
+      await this.db
+        .prepare(`
+          UPDATE sudoku_sessions
+          SET hint_count = hint_count + 1,
+              max_hint_level = max(max_hint_level, ?),
+              updated_at = ?
+          WHERE id = ?
+        `)
+        .bind(level, now, id)
+        .run();
+    } catch (error) {
+      throw toDatabaseError(error, "Recording a Sudoku hint");
+    }
+  }
 }
