@@ -67,6 +67,7 @@ export function SudokuGame() {
   const [serverResult, setServerResult] = useState<GameResult | null>(null);
   const [sample, setSample] = useState<CompletionSample | null>(null);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [secondsToNext, setSecondsToNext] = useState(0);
   const [usedTechniques, setUsedTechniques] = useState<string[]>([]);
   const progressRef = useRef({ values, notes, seconds, mistakes, paused });
@@ -274,6 +275,7 @@ export function SudokuGame() {
     setServerResult(null);
     setSample(null);
     setShareStatus(null);
+    setShareUrl(null);
     setUsedTechniques([]);
     completionStartedRef.current = false;
   }, [puzzle]);
@@ -351,8 +353,21 @@ export function SudokuGame() {
     });
   }, [complete, mistakes, notes, seconds, serverResult, sessionToken, values]);
 
+  useEffect(() => {
+    if (!serverResult || !sessionToken || shareUrl) return;
+    fetch("/api/sudoku/share", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: sessionToken }),
+    }).then(async (response) => {
+      const payload = await response.json() as { error?: string; url?: string };
+      if (!response.ok || !payload.url) throw new Error(payload.error ?? "Share page unavailable");
+      setShareUrl(payload.url);
+    }).catch(() => setShareStatus("Share page is still being prepared. Please try again."));
+  }, [serverResult, sessionToken, shareUrl]);
+
   const shareResult = useCallback(async () => {
-    if (!puzzle || !serverResult) return;
+    if (!puzzle || !serverResult || !shareUrl) return;
     const text = [
       "PuzzGrind Daily Sudoku",
       puzzle.puzzleDate,
@@ -360,11 +375,11 @@ export function SudokuGame() {
       `⏱ ${formatTime(serverResult.durationSeconds)}`,
       `💡 ${serverResult.hintCount} hint${serverResult.hintCount === 1 ? "" : "s"}`,
       `❌ ${serverResult.mistakes} mistake${serverResult.mistakes === 1 ? "" : "s"}`,
-      "https://puzzgrind.com/sudoku",
+      shareUrl,
     ].join("\n");
     try {
       const usedNativeShare = typeof navigator.share === "function";
-      if (usedNativeShare) await navigator.share({ title: "PuzzGrind Daily Sudoku", text, url: "https://puzzgrind.com/sudoku" });
+      if (usedNativeShare) await navigator.share({ title: "PuzzGrind Daily Sudoku", text, url: shareUrl });
       else await navigator.clipboard.writeText(text);
       setShareStatus(usedNativeShare ? "Shared" : "Copied to clipboard");
     } catch (cause) {
@@ -372,11 +387,11 @@ export function SudokuGame() {
       await navigator.clipboard.writeText(text);
       setShareStatus("Copied to clipboard");
     }
-  }, [puzzle, serverResult]);
+  }, [puzzle, serverResult, shareUrl]);
 
   const shareToPlatform = useCallback(async (platform: "facebook" | "instagram" | "linkedin" | "tiktok" | "x") => {
-    if (!puzzle || !serverResult) return;
-    const url = "https://puzzgrind.com/sudoku";
+    if (!puzzle || !serverResult || !shareUrl) return;
+    const url = shareUrl;
     const text = [
       `PuzzGrind Daily Sudoku ${puzzle.puzzleDate}`,
       `⏱ ${formatTime(serverResult.durationSeconds)} · 💡 ${serverResult.hintCount} · ❌ ${serverResult.mistakes}`,
@@ -397,7 +412,7 @@ export function SudokuGame() {
 
     window.open(destinations[platform], "_blank", "noopener,noreferrer");
     setShareStatus(`Opened ${platform === "x" ? "X" : platform === "facebook" ? "Facebook" : "LinkedIn"}.`);
-  }, [puzzle, serverResult]);
+  }, [puzzle, serverResult, shareUrl]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -454,10 +469,11 @@ export function SudokuGame() {
             <div className="mt-5 grid grid-cols-2 gap-3 text-sm"><div className="rounded-xl bg-white/10 p-3"><span className="block text-white/60">Time</span><strong className="text-lg">{formatTime(serverResult.durationSeconds)}</strong></div><div className="rounded-xl bg-white/10 p-3"><span className="block text-white/60">Mistakes</span><strong className="text-lg">{serverResult.mistakes}</strong></div><div className="rounded-xl bg-white/10 p-3"><span className="block text-white/60">Hints</span><strong className="text-lg">{serverResult.hintCount}</strong></div><div className="rounded-xl bg-white/10 p-3"><span className="block text-white/60">Best hint</span><strong className="text-lg">{serverResult.maxHintLevel ? `L${serverResult.maxHintLevel}` : "—"}</strong></div></div>
             {serverResult.hintCount === 0 && <p className="mt-4 rounded-full bg-[var(--accent)] px-4 py-2 text-center text-sm font-black text-emerald-950">No Hint</p>}
             {usedTechniques.length > 0 && <p className="mt-4 text-sm text-white/70">Techniques: {usedTechniques.join(", ")}</p>}
-            <button className="mt-5 w-full rounded-xl bg-white px-4 py-3 font-black text-emerald-950" onClick={shareResult}>Share result</button>
+            <button className="mt-5 w-full rounded-xl bg-white px-4 py-3 font-black text-emerald-950 disabled:cursor-wait disabled:opacity-60" disabled={!shareUrl} onClick={shareResult}>{shareUrl ? "Share result" : "Preparing share page…"}</button>
+            {shareUrl && <a className="mt-2 block text-center text-xs font-bold text-[var(--accent)] underline underline-offset-4" href={shareUrl}>View public result page</a>}
             <div aria-label="Share to a social platform" className="mt-3 grid grid-cols-5 gap-2">
               {(["x", "instagram", "linkedin", "tiktok", "facebook"] as const).map((platform) => (
-                <button aria-label={`Share on ${platform === "x" ? "X" : platform[0].toUpperCase() + platform.slice(1)}`} className="min-h-10 rounded-lg border border-white/20 bg-white/10 px-1 text-[11px] font-black text-white transition hover:bg-white/20" key={platform} onClick={() => void shareToPlatform(platform)}>
+                <button aria-label={`Share on ${platform === "x" ? "X" : platform[0].toUpperCase() + platform.slice(1)}`} className="min-h-10 rounded-lg border border-white/20 bg-white/10 px-1 text-[11px] font-black text-white transition hover:bg-white/20 disabled:opacity-40" disabled={!shareUrl} key={platform} onClick={() => void shareToPlatform(platform)}>
                   {platform === "x" ? "X" : platform === "instagram" ? "IG" : platform === "linkedin" ? "in" : platform === "tiktok" ? "TikTok" : "f"}
                 </button>
               ))}
