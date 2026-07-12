@@ -15,15 +15,30 @@ export const RATE_LIMIT_POLICIES = {
 
 export type RateLimitPolicyName = keyof typeof RATE_LIMIT_POLICIES;
 
-function clientIp(request: Request): string {
-  // CF-Connecting-IP is set by Cloudflare at the trusted edge. Do not fall back
-  // to user-controlled forwarding headers.
-  return request.headers.get("cf-connecting-ip")?.trim() || "unknown";
+type AppEnvironment = CloudflareEnv["APP_ENV"];
+
+function isDeployedEnvironment(envName?: AppEnvironment): boolean {
+  return envName === "preview" || envName === "production" || envName === "staging";
 }
 
-export function rateLimitKey(request: Request, policy: RateLimitPolicyName, identity?: string): string {
+function clientIp(request: Request, envName?: AppEnvironment): string | null {
+  // CF-Connecting-IP is set by Cloudflare at the trusted edge. Do not fall back
+  // to user-controlled forwarding headers.
+  const trustedIp = request.headers.get("cf-connecting-ip")?.trim();
+  if (trustedIp) return trustedIp;
+  return isDeployedEnvironment(envName) ? null : "local";
+}
+
+export function rateLimitKey(
+  request: Request,
+  policy: RateLimitPolicyName,
+  identity?: string,
+  envName?: AppEnvironment,
+): string | null {
+  const ip = clientIp(request, envName);
+  if (!ip) return null;
   const safeIdentity = identity?.slice(0, 128) || "anonymous";
-  return `${policy}:${clientIp(request)}:${safeIdentity}`;
+  return `${policy}:${ip}:${safeIdentity}`;
 }
 
 export async function enforceRateLimit(input: {
@@ -33,7 +48,7 @@ export async function enforceRateLimit(input: {
   period: number;
 }): Promise<NextResponse | null> {
   if (!input.binding) {
-    if (input.envName === "production" || input.envName === "staging") {
+    if (input.envName === "preview" || input.envName === "production" || input.envName === "staging") {
       return NextResponse.json({ error: "rate_limiter_unavailable" }, { status: 503 });
     }
     return null;
@@ -59,10 +74,14 @@ export async function limitApiRequest(
 ): Promise<NextResponse | null> {
   const policy = RATE_LIMIT_POLICIES[policyName];
   const binding = env[policy.binding] as RateLimitBinding | undefined;
+  const key = rateLimitKey(request, policyName, identity, env.APP_ENV);
+  if (!key) {
+    return NextResponse.json({ error: "client_identity_unavailable" }, { status: 503 });
+  }
   return enforceRateLimit({
     binding,
     envName: env.APP_ENV,
-    key: rateLimitKey(request, policyName, identity),
+    key,
     period: policy.period,
   });
 }

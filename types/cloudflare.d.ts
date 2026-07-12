@@ -4,7 +4,7 @@ import type { RateLimitBinding } from "@/lib/api/rate-limit";
 declare global {
   interface CloudflareEnv {
     ALLOW_STAGING_PUZZLE_FALLBACK?: string;
-    APP_ENV?: "local" | "production" | "staging" | "test";
+    APP_ENV?: "local" | "preview" | "production" | "staging" | "test";
     DB: D1DatabaseLike;
     RATE_LIMIT_COMPLETE?: RateLimitBinding;
     RATE_LIMIT_HINT?: RateLimitBinding;

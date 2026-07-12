@@ -12,25 +12,47 @@
     "enabled": true
   },
   "vars": {
-    "APP_ENV": "production"
+    "APP_ENV": "preview"
   },
   "ratelimits": [
-    { "name": "RATE_LIMIT_START", "namespace_id": "1101", "simple": { "limit": 12, "period": 60 } },
-    { "name": "RATE_LIMIT_SAVE", "namespace_id": "1102", "simple": { "limit": 60, "period": 60 } },
-    { "name": "RATE_LIMIT_COMPLETE", "namespace_id": "1103", "simple": { "limit": 6, "period": 60 } },
-    { "name": "RATE_LIMIT_HINT", "namespace_id": "1104", "simple": { "limit": 12, "period": 60 } },
-    { "name": "RATE_LIMIT_SHARE", "namespace_id": "1105", "simple": { "limit": 10, "period": 60 } },
-    { "name": "RATE_LIMIT_SHARE_IMAGE", "namespace_id": "1106", "simple": { "limit": 120, "period": 60 } }
+    { "name": "RATE_LIMIT_START", "namespace_id": "3101", "simple": { "limit": 12, "period": 60 } },
+    { "name": "RATE_LIMIT_SAVE", "namespace_id": "3102", "simple": { "limit": 60, "period": 60 } },
+    { "name": "RATE_LIMIT_COMPLETE", "namespace_id": "3103", "simple": { "limit": 6, "period": 60 } },
+    { "name": "RATE_LIMIT_HINT", "namespace_id": "3104", "simple": { "limit": 12, "period": 60 } },
+    { "name": "RATE_LIMIT_SHARE", "namespace_id": "3105", "simple": { "limit": 10, "period": 60 } },
+    { "name": "RATE_LIMIT_SHARE_IMAGE", "namespace_id": "3106", "simple": { "limit": 120, "period": 60 } }
   ],
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "puzzgrind-db",
-      "database_id": "d3e6e288-046a-4552-b6d2-39f014276af7",
+      "database_name": "puzzgrind-staging-db",
+      "database_id": "d3f0b3d8-81a8-40de-96f4-7ed248e0fb93",
       "migrations_dir": "migrations"
     }
   ],
   "env": {
+    "production": {
+      "name": "puzzgrind",
+      "vars": {
+        "APP_ENV": "production"
+      },
+      "ratelimits": [
+        { "name": "RATE_LIMIT_START", "namespace_id": "1101", "simple": { "limit": 12, "period": 60 } },
+        { "name": "RATE_LIMIT_SAVE", "namespace_id": "1102", "simple": { "limit": 60, "period": 60 } },
+        { "name": "RATE_LIMIT_COMPLETE", "namespace_id": "1103", "simple": { "limit": 6, "period": 60 } },
+        { "name": "RATE_LIMIT_HINT", "namespace_id": "1104", "simple": { "limit": 12, "period": 60 } },
+        { "name": "RATE_LIMIT_SHARE", "namespace_id": "1105", "simple": { "limit": 10, "period": 60 } },
+        { "name": "RATE_LIMIT_SHARE_IMAGE", "namespace_id": "1106", "simple": { "limit": 120, "period": 60 } }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "puzzgrind-db",
+          "database_id": "d3e6e288-046a-4552-b6d2-39f014276af7",
+          "migrations_dir": "migrations"
+        }
+      ]
+    },
     "staging": {
       "name": "puzzgrind-staging",
       "vars": {

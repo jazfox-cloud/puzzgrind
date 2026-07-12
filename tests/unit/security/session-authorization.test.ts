@@ -52,7 +52,30 @@ describe("Hint session authorization", () => {
   });
 
   it("rejects an invalid signature", async () => {
-    expect(await errorOf(await authorize({ token: "invalid.token" }))).toEqual({ error: "invalid_session_token" });
+    let lookups = 0;
+    const result = await authorizeSession({
+      allowedStatuses: ["started", "in_progress"],
+      findSession: async () => { lookups += 1; return session; },
+      now,
+      secret,
+      token: "invalid.token",
+    });
+    expect(await errorOf(result)).toEqual({ error: "invalid_session_token" });
+    expect(lookups).toBe(0);
+  });
+
+  it("performs one session lookup for a valid signed token", async () => {
+    let lookups = 0;
+    const token = await createSessionToken(payload, secret);
+    const result = await authorizeSession({
+      allowedStatuses: ["started", "in_progress"],
+      findSession: async () => { lookups += 1; return session; },
+      now,
+      secret,
+      token,
+    });
+    expect(result.ok).toBe(true);
+    expect(lookups).toBe(1);
   });
 
   it("distinguishes an expired token", async () => {

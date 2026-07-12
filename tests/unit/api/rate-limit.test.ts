@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { enforceRateLimit, rateLimitKey } from "@/lib/api/rate-limit";
+import { enforceRateLimit, limitApiRequest, rateLimitKey } from "@/lib/api/rate-limit";
 import type { RateLimitBinding } from "@/lib/api/rate-limit";
 
 class FakeFixedWindowLimiter implements RateLimitBinding {
@@ -51,7 +51,35 @@ describe("API rate limiting", () => {
 
   it("fails closed in deployed environments when the binding is missing", async () => {
     expect((await enforceRateLimit({ envName: "production", key: "x", period: 60 }))?.status).toBe(503);
+    expect((await enforceRateLimit({ envName: "preview", key: "x", period: 60 }))?.status).toBe(503);
+    expect((await enforceRateLimit({ envName: "staging", key: "x", period: 60 }))?.status).toBe(503);
+    expect(await enforceRateLimit({ envName: "local", key: "x", period: 60 })).toBeNull();
     expect(await enforceRateLimit({ envName: "test", key: "x", period: 60 })).toBeNull();
+  });
+
+  it("uses a configured binding in preview", async () => {
+    const binding = new FakeFixedWindowLimiter(1);
+    const env = { APP_ENV: "preview", RATE_LIMIT_HINT: binding } as unknown as CloudflareEnv;
+    const request = new Request("https://preview.puzzgrind.test", {
+      headers: { "cf-connecting-ip": "203.0.113.4" },
+    });
+    expect(await limitApiRequest(request, env, "hint", "session-1")).toBeNull();
+    expect((await limitApiRequest(request, env, "hint", "session-1"))?.status).toBe(429);
+  });
+
+  it("rejects a missing trusted client IP in deployed environments", async () => {
+    const request = new Request("https://preview.puzzgrind.test", {
+      headers: { "x-forwarded-for": "198.51.100.2" },
+    });
+    const response = await limitApiRequest(request, { APP_ENV: "preview" } as CloudflareEnv, "hint");
+    expect(response?.status).toBe(503);
+    expect(await response?.json()).toEqual({ error: "client_identity_unavailable" });
+  });
+
+  it("uses an explicit local fallback when the trusted client IP is absent", () => {
+    const request = new Request("http://localhost:3000");
+    expect(rateLimitKey(request, "hint", "session-1", "local")).toBe("hint:local:session-1");
+    expect(rateLimitKey(request, "hint", "session-1", "test")).toBe("hint:local:session-1");
   });
 
   it("uses only Cloudflare's trusted IP header", () => {
