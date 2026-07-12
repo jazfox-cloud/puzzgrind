@@ -3,8 +3,6 @@ import { ImageResponse } from "next/og";
 
 import { verifyShareToken } from "@/lib/security/share-token";
 
-export const runtime = "edge";
-
 export async function GET(_: Request, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
   const result = await verifyShareToken(token, getCloudflareContext().env.SESSION_SIGNING_SECRET);
