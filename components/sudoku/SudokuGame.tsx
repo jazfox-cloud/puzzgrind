@@ -281,7 +281,7 @@ export function SudokuGame() {
   }, [puzzle]);
 
   const requestHint = useCallback(async (level: 1 | 2 | 3) => {
-    if (!sessionId || values.length !== 81 || paused || complete || serverResult) return;
+    if (!sessionId || !sessionToken || values.length !== 81 || paused || complete || serverResult) return;
     if (conflictCells.size > 0) {
       setHintError("There’s a conflict on the board. Fix the red ! cells before asking for another hint.");
       return;
@@ -292,7 +292,7 @@ export function SudokuGame() {
       const response = await fetch("/api/sudoku/hint", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId, board: values.join(""), level }),
+        body: JSON.stringify({ sessionId, sessionToken, board: values.join(""), level }),
       });
       const result = await response.json() as { error?: string; hint?: SudokuHint };
       if (!response.ok || !result.hint) {
@@ -311,7 +311,7 @@ export function SudokuGame() {
     } finally {
       setHintLoading(false);
     }
-  }, [complete, conflictCells, paused, serverResult, sessionId, values]);
+  }, [complete, conflictCells, paused, serverResult, sessionId, sessionToken, values]);
 
   const saveProgress = useCallback(async () => {
     const current = progressRef.current;

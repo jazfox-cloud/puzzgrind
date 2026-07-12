@@ -2,6 +2,8 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextResponse } from "next/server";
 
 import { SudokuSessionRepository, SudokuStatsRepository } from "@/lib/db";
+import { JSON_BODY_LIMITS, readJsonBody } from "@/lib/api/request";
+import { limitApiRequest } from "@/lib/api/rate-limit";
 import { createSessionToken } from "@/lib/security/session-token";
 import { parseBoard } from "@/lib/sudoku";
 import { readDailyPuzzle, utcDate } from "@/lib/sudoku/daily";
@@ -9,12 +11,9 @@ import { readDailyPuzzle, utcDate } from "@/lib/sudoku/daily";
 const anonymousIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function POST(request: Request) {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
-  }
+  const bodyResult = await readJsonBody<unknown>(request, JSON_BODY_LIMITS.sessionStart);
+  if (!bodyResult.ok) return bodyResult.response;
+  const body = bodyResult.value;
   const anonymousId = typeof body === "object" && body && "anonymousId" in body ? body.anonymousId : null;
   if (typeof anonymousId !== "string" || !anonymousIdPattern.test(anonymousId)) {
     return NextResponse.json({ error: "invalid_anonymous_id" }, { status: 400 });
@@ -22,6 +21,10 @@ export async function POST(request: Request) {
 
   try {
     const { env } = getCloudflareContext();
+    // IP-only here prevents attackers from evading the creation limit by
+    // rotating client-generated anonymous UUIDs.
+    const limited = await limitApiRequest(request, env, "sessionStart");
+    if (limited) return limited;
     const db = env.DB;
     const puzzle = await readDailyPuzzle(db, utcDate(), {
       allowLatestPublished: env.ALLOW_STAGING_PUZZLE_FALLBACK === "true",
