@@ -240,21 +240,21 @@ export function SudokuGame() {
 
   const undo = useCallback(() => {
     const previous = history.at(-1);
-    if (!previous || paused) return;
+    if (!previous || paused || serverResult) return;
     setFuture((current) => [{ values: [...values], notes: notes.map((cell) => [...cell]) }, ...current]);
     setValues([...previous.values]);
     setNotes(previous.notes.map((cell) => [...cell]));
     setHistory((current) => current.slice(0, -1));
-  }, [history, notes, paused, values]);
+  }, [history, notes, paused, serverResult, values]);
 
   const redo = useCallback(() => {
     const next = future[0];
-    if (!next || paused) return;
+    if (!next || paused || serverResult) return;
     setHistory((current) => [...current, { values: [...values], notes: notes.map((cell) => [...cell]) }]);
     setValues([...next.values]);
     setNotes(next.notes.map((cell) => [...cell]));
     setFuture((current) => current.slice(1));
-  }, [future, notes, paused, values]);
+  }, [future, notes, paused, serverResult, values]);
 
   const restart = useCallback(() => {
     if (!puzzle || !window.confirm("Restart today's puzzle? Your current progress will be cleared.")) return;
@@ -367,6 +367,7 @@ export function SudokuGame() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (serverResult) return;
       if (/^[1-9]$/.test(event.key)) inputNumber(Number(event.key));
       if (event.key === "Backspace" || event.key === "Delete" || event.key === "0") erase();
       if (event.key.toLowerCase() === "n") setNoteMode((current) => !current);
@@ -374,7 +375,7 @@ export function SudokuGame() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [erase, inputNumber, undo]);
+  }, [erase, inputNumber, serverResult, undo]);
 
   if (error) return <div className="rounded-3xl bg-red-100 p-6 font-bold text-red-900">{error}</div>;
   if (!puzzle) return <div className="rounded-3xl bg-white/70 p-8 text-center font-bold">Loading today&apos;s puzzle…</div>;
@@ -428,18 +429,18 @@ export function SudokuGame() {
           {hint ? <>
             <div className="flex items-center justify-between gap-3"><p className="text-xs font-black uppercase tracking-[0.16em] text-sky-700">Level {hint.level} · {hint.title}</p><button className="text-sm font-bold text-[var(--ink-soft)]" onClick={() => setHint(null)}>Close</button></div>
             <p className="mt-3 text-sm leading-6">{hint.explanation}</p>
-            {hint.level < 3 && <button className="mt-4 w-full rounded-xl bg-sky-700 px-4 py-3 font-black text-white disabled:opacity-50" disabled={hintLoading} onClick={() => requestHint((hint.level + 1) as 2 | 3)}>{hintLoading ? "Thinking…" : "Explain more"}</button>}
+            {hint.level < 3 && <button className="mt-4 w-full rounded-xl bg-sky-700 px-4 py-3 font-black text-white disabled:opacity-50" disabled={hintLoading || Boolean(serverResult)} onClick={() => requestHint((hint.level + 1) as 2 | 3)}>{hintLoading ? "Thinking…" : "Explain more"}</button>}
           </> : <>
             <p className="font-black">Need a nudge?</p><p className="mt-1 text-sm leading-5 text-[var(--ink-soft)]">Hints explain the logic in three steps and never fill the board for you.</p>
-            <button className="mt-3 w-full rounded-xl bg-sky-700 px-4 py-3 font-black text-white disabled:opacity-50" disabled={!sessionId || hintLoading} onClick={() => requestHint(1)}>{hintLoading ? "Finding a hint…" : "Get a hint"}</button>
+            <button className="mt-3 w-full rounded-xl bg-sky-700 px-4 py-3 font-black text-white disabled:opacity-50" disabled={!sessionId || hintLoading || Boolean(serverResult)} onClick={() => requestHint(1)}>{hintLoading ? "Finding a hint…" : "Get a hint"}</button>
           </>}
         </section>
         <div className="grid grid-cols-5 gap-2 lg:grid-cols-3">{Array.from({ length: 9 }, (_, offset) => <button className="min-h-12 rounded-xl bg-emerald-950 text-xl font-black text-white disabled:opacity-40" disabled={Boolean(serverResult)} key={offset} onClick={() => inputNumber(offset + 1)}>{offset + 1}</button>)}</div>
         <div className="grid grid-cols-2 gap-2">
-          <button aria-pressed={noteMode} className={`min-h-12 rounded-xl border font-black ${noteMode ? "border-amber-500 bg-amber-200" : "border-emerald-950/20 bg-white/70"}`} onClick={() => setNoteMode((current) => !current)}>Notes {noteMode ? "On" : "Off"}</button>
-          <button className="min-h-12 rounded-xl border border-emerald-950/20 bg-white/70 font-black" onClick={erase}>Erase</button>
-          <button className="min-h-12 rounded-xl border border-emerald-950/20 bg-white/70 font-black disabled:opacity-40" disabled={!history.length} onClick={undo}>Undo</button>
-          <button className="min-h-12 rounded-xl border border-emerald-950/20 bg-white/70 font-black disabled:opacity-40" disabled={!future.length} onClick={redo}>Redo</button>
+          <button aria-pressed={noteMode} className={`min-h-12 rounded-xl border font-black disabled:opacity-40 ${noteMode ? "border-amber-500 bg-amber-200" : "border-emerald-950/20 bg-white/70"}`} disabled={Boolean(serverResult)} onClick={() => setNoteMode((current) => !current)}>Notes {noteMode ? "On" : "Off"}</button>
+          <button className="min-h-12 rounded-xl border border-emerald-950/20 bg-white/70 font-black disabled:opacity-40" disabled={Boolean(serverResult)} onClick={erase}>Erase</button>
+          <button className="min-h-12 rounded-xl border border-emerald-950/20 bg-white/70 font-black disabled:opacity-40" disabled={!history.length || Boolean(serverResult)} onClick={undo}>Undo</button>
+          <button className="min-h-12 rounded-xl border border-emerald-950/20 bg-white/70 font-black disabled:opacity-40" disabled={!future.length || Boolean(serverResult)} onClick={redo}>Redo</button>
           <button className="col-span-2 min-h-12 rounded-xl border border-red-900/20 bg-red-50 font-black text-red-900 disabled:cursor-not-allowed disabled:opacity-40" disabled={Boolean(serverResult)} onClick={restart}>{serverResult ? "Completed" : "Restart puzzle"}</button>
         </div>
         <p className="text-sm leading-6 text-[var(--ink-soft)]">Keyboard: 1–9 to enter, N for notes, Delete to erase, Ctrl/⌘+Z to undo.</p>
