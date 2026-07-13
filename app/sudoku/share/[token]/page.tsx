@@ -1,11 +1,12 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PublicShareActions } from "@/components/sudoku/PublicShareActions";
 import { verifyShareToken } from "@/lib/security/share-token";
+import { NOINDEX_ROBOTS } from "@/lib/seo";
+import { siteUrl } from "@/lib/site";
 
 type Props = { params: Promise<{ token: string }> };
 
@@ -21,20 +22,12 @@ async function readResult(token: string) {
   }
 }
 
-async function requestOrigin() {
-  const values = await headers();
-  const host = values.get("x-forwarded-host") ?? values.get("host") ?? "puzzgrind.com";
-  const protocol = values.get("x-forwarded-proto") ?? "https";
-  return `${protocol}://${host}`;
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params;
   const result = await readResult(token);
   if (!result) return { title: "Sudoku result unavailable" };
-  const origin = await requestOrigin();
-  const shareUrl = `${origin}/sudoku/share/${token}`;
-  const cardUrl = `${origin}/api/sudoku/share-card/${token}`;
+  const shareUrl = siteUrl(`/sudoku/share/${token}`);
+  const cardUrl = siteUrl(`/api/sudoku/share-card/${token}`);
   const title = `Daily Sudoku in ${time(result.durationSeconds)}`;
   const description = `${result.mistakes} mistakes · ${result.hintCount} hints · Can you beat this result?`;
   return {
@@ -54,7 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       images: [cardUrl],
     },
-    robots: { index: false, follow: true },
+    robots: NOINDEX_ROBOTS,
   };
 }
 
@@ -62,8 +55,7 @@ export default async function SudokuSharePage({ params }: Props) {
   const { token } = await params;
   const result = await readResult(token);
   if (!result) notFound();
-  const origin = await requestOrigin();
-  const shareUrl = `${origin}/sudoku/share/${token}`;
+  const shareUrl = siteUrl(`/sudoku/share/${token}`);
   const shareText = `I finished PuzzGrind Daily Sudoku in ${time(result.durationSeconds)} with ${result.mistakes} mistakes and ${result.hintCount} hints. Can you beat it?`;
   return <main className="mx-auto min-h-screen max-w-3xl px-6 py-8 sm:px-10">
     <header className="flex items-center justify-between border-b border-emerald-950/15 pb-5">
@@ -80,7 +72,7 @@ export default async function SudokuSharePage({ params }: Props) {
         <div className="rounded-2xl bg-white/75 p-5"><span className="text-sm text-[var(--ink-soft)]">Best hint</span><strong className="mt-1 block text-2xl">{result.maxHintLevel ? `L${result.maxHintLevel}` : "—"}</strong></div>
       </div>
       <p className="mx-auto mt-8 max-w-lg text-lg leading-8 text-[var(--ink-soft)]">Can you beat this result? Today’s puzzle is the same for everyone worldwide.</p>
-      <PublicShareActions cardUrl={`${origin}/api/sudoku/share-card/${token}`} shareText={shareText} shareUrl={shareUrl} />
+      <PublicShareActions cardUrl={siteUrl(`/api/sudoku/share-card/${token}`)} shareText={shareText} shareUrl={shareUrl} />
       <Link className="mt-8 inline-flex rounded-full bg-[var(--accent)] px-7 py-4 font-black text-emerald-950" href="/sudoku">Play today’s Sudoku</Link>
     </section>
   </main>;
