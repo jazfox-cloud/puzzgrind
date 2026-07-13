@@ -12,7 +12,7 @@ export default defineConfig({
   },
   webServer: {
     command: "pnpm dev --hostname 127.0.0.1 --port 3100",
-    env: { APP_ENV: "production" },
+    env: { APP_ENV: "production", NEXT_PUBLIC_GA_MEASUREMENT_ID: "G-TESTONLY" },
     url: "http://127.0.0.1:3100/api/health",
     reuseExistingServer: !process.env.CI,
   },
