@@ -1,8 +1,20 @@
 import Link from "next/link";
 
+import { JsonLd } from "@/components/JsonLd";
+import { createPageMetadata, getAppEnvironment, HOME_SEO, isIndexableEnvironment, WEBSITE_JSON_LD } from "@/lib/seo";
+import { siteUrl } from "@/lib/site";
+
+export function generateMetadata() {
+  return createPageMetadata(HOME_SEO, getAppEnvironment());
+}
+
 export default function HomePage() {
+  const indexable = isIndexableEnvironment(getAppEnvironment());
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-8 sm:px-10">
+      {indexable ? <link href={siteUrl("/")} rel="canonical" /> : null}
+      {indexable ? <meta content={siteUrl("/")} property="og:url" /> : null}
+      <JsonLd data={WEBSITE_JSON_LD} />
       <header className="flex items-center justify-between border-b border-emerald-950/15 pb-5">
         <div className="text-xl font-black tracking-[-0.04em]">PuzzGrind</div>
         <span className="rounded-full border border-emerald-950/15 bg-white/60 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em]">
