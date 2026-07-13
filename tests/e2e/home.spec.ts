@@ -12,6 +12,17 @@ test("shows the PuzzGrind launch page", async ({ page }) => {
   expect(await page.locator('script[type="application/ld+json"]').textContent()).toContain('"@type":"WebSite"');
 });
 
+test("initializes GA4 once in a configured Production runtime", async ({ page }) => {
+  await page.goto("/");
+  const loader = page.locator('script[src="https://www.googletagmanager.com/gtag/js?id=G-TESTONLY"]');
+  await expect(loader).toHaveCount(1);
+  const initializer = page.locator("script#_next-ga-init");
+  await expect(initializer).toHaveCount(1);
+  expect(await initializer.textContent()).toMatch(
+    /gtag\('config',\s*'G-TESTONLY'\s*\)/,
+  );
+});
+
 test("serves independent Sudoku metadata and structured data", async ({ page }) => {
   const response = await page.goto("/sudoku");
   expect(response?.status()).toBe(200);
