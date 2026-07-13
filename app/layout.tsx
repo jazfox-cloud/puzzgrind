@@ -14,8 +14,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   const environment = getAppEnvironment();
   return (
     <html lang="en">
-      <body>{children}</body>
-      <Analytics environment={environment} measurementId={getAnalyticsMeasurementId()} />
+      <body>
+        {children}
+        <Analytics environment={environment} measurementId={getAnalyticsMeasurementId()} />
+      </body>
     </html>
   );
 }

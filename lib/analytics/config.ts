@@ -1,4 +1,5 @@
 import type { AppEnvironment } from "@/lib/seo";
+import type { AnalyticsConsent } from "@/lib/analytics/consent";
 
 const MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]+$/;
 
@@ -7,10 +8,24 @@ export function getAnalyticsMeasurementId() {
   return value && MEASUREMENT_ID_PATTERN.test(value) ? value : undefined;
 }
 
-export function isAnalyticsEnabled(environment: AppEnvironment, measurementId?: string) {
+export function isAnalyticsConfigured(environment: AppEnvironment, measurementId?: string) {
   return environment === "production" && Boolean(measurementId && MEASUREMENT_ID_PATTERN.test(measurementId));
 }
 
-export function analyticsDebugMessage(environment: AppEnvironment, enabled: boolean) {
-  return enabled ? "Analytics Enabled" : `Analytics Disabled (${environment})`;
+export function isAnalyticsEnabled(
+  environment: AppEnvironment,
+  measurementId: string | undefined,
+  consent: AnalyticsConsent,
+) {
+  return isAnalyticsConfigured(environment, measurementId) && consent === "granted";
+}
+
+export function analyticsDebugMessage(
+  environment: AppEnvironment,
+  enabled: boolean,
+  consent: AnalyticsConsent,
+) {
+  if (enabled) return "Analytics Enabled";
+  if (environment === "production") return `Analytics Disabled (consent ${consent})`;
+  return `Analytics Disabled (${environment})`;
 }

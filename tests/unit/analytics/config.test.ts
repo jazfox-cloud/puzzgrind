@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   analyticsDebugMessage,
   getAnalyticsMeasurementId,
+  isAnalyticsConfigured,
   isAnalyticsEnabled,
 } from "@/lib/analytics/config";
 
@@ -22,19 +23,23 @@ describe("analytics environment configuration", () => {
     expect(getAnalyticsMeasurementId()).toBeUndefined();
   });
 
-  it("enables GA only for configured Production", () => {
-    expect(isAnalyticsEnabled("production", "G-N1NLGSYBKD")).toBe(true);
-    expect(isAnalyticsEnabled("production", undefined)).toBe(false);
+  it("enables GA only for configured Production with granted consent", () => {
+    expect(isAnalyticsConfigured("production", "G-N1NLGSYBKD")).toBe(true);
+    expect(isAnalyticsEnabled("production", "G-N1NLGSYBKD", "granted")).toBe(true);
+    expect(isAnalyticsEnabled("production", "G-N1NLGSYBKD", "unknown")).toBe(false);
+    expect(isAnalyticsEnabled("production", "G-N1NLGSYBKD", "denied")).toBe(false);
+    expect(isAnalyticsEnabled("production", undefined, "granted")).toBe(false);
 
     for (const environment of ["local", "test", "preview", "staging"] as const) {
-      expect(isAnalyticsEnabled(environment, "G-N1NLGSYBKD")).toBe(false);
+      expect(isAnalyticsEnabled(environment, "G-N1NLGSYBKD", "granted")).toBe(false);
     }
   });
 
   it("provides the required environment debug messages", () => {
-    expect(analyticsDebugMessage("production", true)).toBe("Analytics Enabled");
-    expect(analyticsDebugMessage("local", false)).toBe("Analytics Disabled (local)");
-    expect(analyticsDebugMessage("preview", false)).toBe("Analytics Disabled (preview)");
-    expect(analyticsDebugMessage("staging", false)).toBe("Analytics Disabled (staging)");
+    expect(analyticsDebugMessage("production", true, "granted")).toBe("Analytics Enabled");
+    expect(analyticsDebugMessage("production", false, "unknown")).toBe("Analytics Disabled (consent unknown)");
+    expect(analyticsDebugMessage("local", false, "unknown")).toBe("Analytics Disabled (local)");
+    expect(analyticsDebugMessage("preview", false, "granted")).toBe("Analytics Disabled (preview)");
+    expect(analyticsDebugMessage("staging", false, "granted")).toBe("Analytics Disabled (staging)");
   });
 });

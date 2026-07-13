@@ -17,6 +17,12 @@ export const SUDOKU_SEO = {
   path: "/sudoku",
 } as const;
 
+export const PRIVACY_SEO = {
+  title: "Privacy and Analytics",
+  description: "Learn how optional Google Analytics works on PuzzGrind and how to accept, reject, or withdraw analytics consent.",
+  path: "/privacy",
+} as const;
+
 export const NOINDEX_ROBOTS = { index: false, follow: false, noarchive: true } as const;
 
 export const WEBSITE_JSON_LD = {

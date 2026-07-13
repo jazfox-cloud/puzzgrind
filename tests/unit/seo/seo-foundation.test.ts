@@ -13,6 +13,7 @@ import {
   createRootMetadata,
   HOME_SEO,
   NOINDEX_ROBOTS,
+  PRIVACY_SEO,
   serializeJsonLd,
   SUDOKU_JSON_LD,
   SUDOKU_SEO,
@@ -31,6 +32,7 @@ describe("SEO foundation", () => {
     const root = createRootMetadata("production");
     const home = createPageMetadata(HOME_SEO, "production");
     const sudoku = createPageMetadata(SUDOKU_SEO, "production");
+    const privacy = createPageMetadata(PRIVACY_SEO, "production");
     expect(root.metadataBase?.toString()).toBe("https://puzzgrind.com/");
     expect(root.robots).toBeUndefined();
     expect(root.alternates).toBeUndefined();
@@ -38,6 +40,7 @@ describe("SEO foundation", () => {
     expect(home.openGraph?.url).toBeUndefined();
     expect(sudoku.alternates?.canonical).toBe("https://puzzgrind.com/sudoku");
     expect(sudoku.openGraph?.url).toBe("https://puzzgrind.com/sudoku");
+    expect(privacy.alternates?.canonical).toBe("https://puzzgrind.com/privacy");
     expect(home.twitter).toMatchObject({ card: "summary_large_image" });
   });
 
@@ -58,10 +61,11 @@ describe("SEO foundation", () => {
     expect(createRobots("staging")).toEqual({ rules: { userAgent: "*", disallow: "/" } });
   });
 
-  it("limits the sitemap to the two public Production URLs", () => {
+  it("limits the sitemap to the three public Production URLs", () => {
     expect(sitemap().map(({ url }) => url)).toEqual([
       "https://puzzgrind.com/",
       "https://puzzgrind.com/sudoku",
+      "https://puzzgrind.com/privacy",
     ]);
   });
 

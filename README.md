@@ -13,17 +13,19 @@ pnpm dev
 
 ## Analytics
 
-GA4 is loaded through Next.js `@next/third-parties/google` only when the deployed runtime reports `APP_ENV=production` and `NEXT_PUBLIC_GA_MEASUREMENT_ID` contains a valid `G-` Measurement ID. Configure the Production build environment with:
+GA4 is loaded through Next.js `@next/third-parties/google` only when the deployed runtime reports `APP_ENV=production`, `NEXT_PUBLIC_GA_MEASUREMENT_ID` contains a valid `G-` Measurement ID, and the browser's versioned analytics consent state is `granted`. Configure the Production build environment with:
 
 ```bash
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-N1NLGSYBKD
 ```
 
-The Measurement ID is public configuration, not a secret, but it is intentionally read from the environment rather than embedded in application code. Preview, staging, local, and test environments never render the Google tag or send events, even if the build can see a Measurement ID. Their browser console reports `Analytics Disabled (<environment>)`; a correctly configured Production deployment reports `Analytics Enabled`.
+The Measurement ID is public configuration, not a secret, but it is intentionally read from the environment rather than embedded in application code. Preview, staging, local, and test environments never render the Google tag or send events, even if the build can see a Measurement ID or local consent is granted. Their browser console reports `Analytics Disabled (<environment>)`; configured Production reports `Analytics Enabled` only after consent.
+
+Consent is stored only in the browser under `puzzgrind.analytics-consent.v1` as `granted` or `denied`; missing, invalid, or inaccessible storage is treated as `unknown`. The Google tag is absent until the visitor accepts. Rejecting leaves Analytics disabled. The persistent **Privacy settings** control allows the choice to be changed later. Withdrawing consent immediately blocks the centralized event API, clears accessible `_ga` cookies, and reloads the current page so an already-loaded Google tag is cleanly removed. It does not touch Sudoku progress storage or send the consent choice to the server. See `/privacy` for the visitor-facing explanation.
 
 The root layout initializes GA once. Google Analytics Enhanced Measurement handles initial and App Router history-based page views; keep **Page changes based on browser history events** enabled in the GA4 property. Do not add a second automatic page-view listener unless Enhanced Measurement is disabled, or page views will be duplicated. The analytics module also exposes an explicit `trackPageView` escape hatch and typed Sudoku event helpers from `lib/analytics/events.ts` for future natural instrumentation points.
 
-This foundation does not add Consent Mode, a cookie banner, Search Console, Ads, or gameplay instrumentation. Before a Production merge, set the build variable in the approved hosting environment; no Cloudflare Dashboard or Wrangler configuration is changed by this repository commit.
+The centralized three-state consent model is structured for a future Consent Mode integration, but this foundation does not add Google Consent Mode, a full CMP, Search Console, Ads, or gameplay instrumentation. Before a Production merge, set the build variable in the approved hosting environment; no Cloudflare Dashboard or Wrangler configuration is changed by this repository commit.
 
 ## Quality checks
 
