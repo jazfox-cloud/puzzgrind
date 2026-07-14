@@ -33,7 +33,7 @@ SEO metadata, canonical URLs, robots rules, page indexability, and the Analytics
 
 | Build target | Artifact environment | Resolution |
 | --- | --- | --- |
-| Production (`main`) | `BUILD_APP_ENV=production` | Cloudflare's `WORKERS_CI_BRANCH=main`; `pnpm deploy` also pins the value explicitly before its guarded rebuild |
+| Production (`main`) | `BUILD_APP_ENV=production` | `pnpm deploy` is the sole Production artifact builder and pins the target explicitly |
 | PR / non-production branch | `BUILD_APP_ENV=preview` | Any non-`main` `WORKERS_CI_BRANCH` |
 | Staging | `BUILD_APP_ENV=staging` | `pnpm deploy:staging` pins the value explicitly |
 | Local | `BUILD_APP_ENV=local` | `.env.example` or the safe default |
@@ -41,7 +41,7 @@ SEO metadata, canonical URLs, robots rules, page indexability, and the Analytics
 
 An explicit invalid value fails the build. A Cloudflare build without branch provenance also fails instead of producing an ambiguously indexable artifact. Unclassified local builds fail safe to `local`, so they never emit Production canonical or indexable metadata.
 
-Cloudflare Workers Builds injects `WORKERS_CI` and `WORKERS_CI_BRANCH` automatically. Because the connected Production branch remains `main`, no additional Dashboard variable is required for this contract. If the Production branch changes, update the resolver and its tests in the same controlled release. Runtime `APP_ENV` bindings in `wrangler.jsonc` remain unchanged and cannot override metadata in an already-built artifact.
+Cloudflare Workers Builds injects `WORKERS_CI`, `WORKERS_CI_BRANCH`, and `WORKERS_CI_COMMIT_SHA`. The repository's branch-aware Build command creates a marked Preview artifact on non-`main` branches, but deliberately defers the `main` OpenNext build to `pnpm deploy`. Production then validates runtime bindings, deletes `.next` and `.open-next`, creates exactly one Production artifact, writes a Git/environment marker into the uploaded assets, validates the uploaded static cache, deploys with `--env production`, and runs read-only smoke tests.
 
 ## Quality checks
 
@@ -80,12 +80,13 @@ Cloudflare Dashboard path: **Workers & Pages → puzzgrind → Settings → Buil
 
 | Branch class | Cloudflare command | Required result |
 | --- | --- | --- |
-| Production branch (`main`) | Deploy command: `pnpm deploy` | `APP_ENV=production`, `puzzgrind-db`, namespaces `1101–1106` |
-| Non-production / PR | Version command: `npx wrangler versions upload` | top-level `APP_ENV=preview`, staging D1, namespaces `3101–3106`, no Production traffic change |
+| All branches | Build command: `pnpm build:cloudflare:ci` | `main` defers; non-`main` produces and validates one Preview artifact |
+| Production branch (`main`) | Deploy command: `pnpm deploy` | sole clean Production build; `APP_ENV=production`, `puzzgrind-db`, namespaces `1101–1106` |
+| Non-production / PR | Version command: `npx wrangler versions upload` | uploads the marked Preview artifact; staging D1, namespaces `3101–3106`, no Production traffic change |
 
-The Production deploy command must never be the unqualified `pnpm exec opennextjs-cloudflare deploy`; without `--env production`, Wrangler selects the Preview-safe top-level configuration. `pnpm deploy` runs `scripts/validate-cloudflare-deploy.mjs production` before building and deploying with `--env production`. The guard verifies the Worker name, APP environment, exact Production D1 ID, namespace IDs, and separation from Preview/Staging, and fails non-zero without an explicit Production target.
+The Production deploy command must never be the unqualified `pnpm exec opennextjs-cloudflare deploy`; without `--env production`, Wrangler selects the Preview-safe top-level configuration. `pnpm deploy` checks runtime configuration, cleans both build directories, builds once, and stages OpenNext's cache under the exact `assets/cdn-cgi/_next_cache` upload path. Its marker at `assets/cdn-cgi/puzzgrind/build-environment.json` records the environment, full Git SHA, Next build ID, and critical-file digests. The artifact guard validates that marker plus the uploaded home, Privacy, and robots cache entries before `deploy --env production` can run.
 
-Dashboard settings are external state and are not changed by repository commits. After merging a deployment configuration change, verify that the Production branch is `main`, change the Dashboard Deploy command from `pnpm exec opennextjs-cloudflare deploy` to `pnpm deploy`, leave the PR Version command unchanged, and validate the next automatic `main` build's actual Worker bindings before considering the incident permanently closed.
+Dashboard settings are external state and are not changed by repository commits. Before this hotfix may merge, change the Dashboard Build command from `pnpm exec opennextjs-cloudflare build` to `pnpm build:cloudflare:ci`. Keep Production branch `main`, Deploy command `pnpm deploy`, and Version command `npx wrangler versions upload`. This removes the ambiguous Production double-build while preserving isolated PR Preview builds.
 
 Session routes verify the signed token before reading D1, then rate-limit the authorized session before mutation. Invalid signatures therefore cause no D1 lookup. A replayed valid token can cause one indexed session lookup before the session-scoped limiter runs; this is a known residual read-amplification risk. A second pre-authorization binding was not added because it would require another independent counter policy (or incorrectly count the same binding twice).
 

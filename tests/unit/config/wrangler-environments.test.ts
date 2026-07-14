@@ -43,14 +43,17 @@ describe("Wrangler environment isolation", () => {
 
   it("requires the guarded, explicit Production environment in the deploy script", () => {
     const deploy = packageJson.scripts.deploy;
-    expect(deploy).toContain("validate-cloudflare-deploy.mjs production");
-    expect(deploy).toContain("BUILD_APP_ENV=production");
-    expect(deploy).toContain("deploy --env production");
+    const implementation = readFileSync("scripts/deploy-cloudflare-production.mjs", "utf8");
+    expect(deploy).toContain("deploy-cloudflare-production.mjs");
+    expect(implementation).toContain('validate-cloudflare-deploy.mjs", "production');
+    expect(implementation).toContain('build-cloudflare-artifact.mjs", "production');
+    expect(implementation).toContain('validate-cloudflare-artifact.mjs", "production');
+    expect(implementation).toContain('["deploy", "--env", "production"]');
     expect(deploy).not.toContain("versions upload");
   });
 
   it("pins staging builds to the staging artifact environment", () => {
-    expect(packageJson.scripts["deploy:staging"]).toContain("BUILD_APP_ENV=staging");
+    expect(packageJson.scripts["deploy:staging"]).toContain("build-cloudflare-artifact.mjs staging");
     expect(packageJson.scripts["deploy:staging"]).toContain("deploy --env staging");
   });
 
