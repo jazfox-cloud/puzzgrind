@@ -2,6 +2,8 @@ export const APP_ENVIRONMENTS = ["local", "test", "preview", "staging", "product
 
 export type AppEnvironment = (typeof APP_ENVIRONMENTS)[number];
 
+declare const __PUZZGRIND_BUILD_APP_ENV__: AppEnvironment | undefined;
+
 type BuildEnvironmentSource = Partial<
   Record<"BUILD_APP_ENV" | "NODE_ENV" | "VITEST" | "WORKERS_CI" | "WORKERS_CI_BRANCH", string | undefined>
 >;
@@ -39,5 +41,9 @@ export function resolveBuildAppEnvironment(source: BuildEnvironmentSource = proc
 }
 
 export function getBuildAppEnvironment(): AppEnvironment {
+  if (typeof __PUZZGRIND_BUILD_APP_ENV__ !== "undefined") {
+    return __PUZZGRIND_BUILD_APP_ENV__;
+  }
+
   return resolveBuildAppEnvironment(process.env);
 }
