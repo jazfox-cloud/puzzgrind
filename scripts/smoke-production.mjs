@@ -1,7 +1,7 @@
 import { resolveGitSha } from "./lib/cloudflare-artifact.mjs";
+import { evaluateHtmlCacheSafety } from "./lib/cache-safety.mjs";
 
 const ORIGIN = "https://puzzgrind.com";
-const SAFE_CACHE_CONTROL = "public, max-age=0, must-revalidate";
 
 function occurrences(value, needle) {
   return value.split(needle).length - 1;
@@ -12,11 +12,13 @@ function fail(label, message) {
 }
 
 function assertDeploymentSafeCache(response, label) {
-  const cacheControl = response.headers.get("cache-control")?.toLowerCase() ?? "";
-  const cdnCacheControl = response.headers.get("cdn-cache-control")?.toLowerCase() ?? "";
-  if (cacheControl !== SAFE_CACHE_CONTROL) fail(label, `returned unsafe Cache-Control ${JSON.stringify(cacheControl)}`);
-  if (cdnCacheControl !== "no-store") fail(label, `returned unsafe CDN-Cache-Control ${JSON.stringify(cdnCacheControl)}`);
-  if (cacheControl.includes("s-maxage") || cacheControl.includes("31536000")) fail(label, "returned a long-lived shared cache directive");
+  const headers = {
+    cacheControl: response.headers.get("cache-control") ?? "",
+    cdnCacheControl: response.headers.get("cdn-cache-control") ?? "",
+    cloudflareCdnCacheControl: response.headers.get("cloudflare-cdn-cache-control") ?? "",
+  };
+  const result = evaluateHtmlCacheSafety(headers);
+  if (!result.safe) fail(label, `returned unsafe cache policy (${result.reason}): ${JSON.stringify(headers)}`);
 }
 
 function assertProductionHtml(html, canonical, label) {
