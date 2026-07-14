@@ -2,6 +2,7 @@ import { findGivenViolations, parseBoard } from "./index";
 
 export const GAME_SAVE_VERSION = 2;
 export const ANONYMOUS_ID_KEY = "puzzgrind_anonymous_id";
+export const ONBOARDING_STORAGE_KEY = "puzzgrind_sudoku_onboarding_seen_v1";
 
 export type GameSnapshot = {
   notes: number[][];
@@ -34,12 +35,37 @@ export function isAnonymousId(value: string): boolean {
 }
 
 export function getOrCreateAnonymousId(storage: KeyValueStorage, createUuid: () => string): string {
-  const existing = storage.getItem(ANONYMOUS_ID_KEY);
+  let existing: string | null = null;
+  try {
+    existing = storage.getItem(ANONYMOUS_ID_KEY);
+  } catch {
+    // A blocked storage API should not prevent someone from playing.
+  }
   if (existing && isAnonymousId(existing)) return existing;
   const created = createUuid();
   if (!isAnonymousId(created)) throw new Error("Anonymous ID generator did not return a UUID v4.");
-  storage.setItem(ANONYMOUS_ID_KEY, created);
+  try {
+    storage.setItem(ANONYMOUS_ID_KEY, created);
+  } catch {
+    // The ID remains valid for this session even when it cannot be persisted.
+  }
   return created;
+}
+
+export function hasSeenOnboarding(storage: KeyValueStorage): boolean {
+  try {
+    return storage.getItem(ONBOARDING_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function markOnboardingSeen(storage: KeyValueStorage): void {
+  try {
+    storage.setItem(ONBOARDING_STORAGE_KEY, "true");
+  } catch {
+    // The guide can still be dismissed for the current page view.
+  }
 }
 
 function validValues(value: unknown): value is number[] {
@@ -83,14 +109,26 @@ export function parseSavedGame(raw: string, puzzleId: string, givens: string): S
 }
 
 export function loadSavedGame(storage: KeyValueStorage, puzzleId: string, givens: string): SavedGame | null {
-  const raw = storage.getItem(gameSaveKey(puzzleId));
-  return raw ? parseSavedGame(raw, puzzleId, givens) : null;
+  try {
+    const raw = storage.getItem(gameSaveKey(puzzleId));
+    return raw ? parseSavedGame(raw, puzzleId, givens) : null;
+  } catch {
+    return null;
+  }
 }
 
 export function saveGame(storage: KeyValueStorage, game: SavedGame): void {
-  storage.setItem(gameSaveKey(game.puzzleId), JSON.stringify(game));
+  try {
+    storage.setItem(gameSaveKey(game.puzzleId), JSON.stringify(game));
+  } catch {
+    // Keep the in-memory game usable if storage is unavailable or full.
+  }
 }
 
 export function clearSavedGame(storage: KeyValueStorage, puzzleId: string): void {
-  storage.removeItem(gameSaveKey(puzzleId));
+  try {
+    storage.removeItem(gameSaveKey(puzzleId));
+  } catch {
+    // The in-memory restart still succeeds.
+  }
 }

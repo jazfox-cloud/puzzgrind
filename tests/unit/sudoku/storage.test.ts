@@ -3,13 +3,19 @@ import { describe, expect, it } from "vitest";
 import {
   ANONYMOUS_ID_KEY,
   GAME_SAVE_VERSION,
+  ONBOARDING_STORAGE_KEY,
   gameSaveKey,
   getOrCreateAnonymousId,
+  hasSeenOnboarding,
+  loadSavedGame,
+  markOnboardingSeen,
+  saveGame,
   parseSavedGame,
 } from "@/lib/sudoku/storage";
+import type { SavedGame } from "@/lib/sudoku/storage";
 
 const givens = `5${"0".repeat(80)}`;
-const validSave = {
+const validSave: SavedGame = {
   version: GAME_SAVE_VERSION,
   puzzleId: "p1",
   values: [5, ...Array<number>(80).fill(0)],
@@ -20,11 +26,11 @@ const validSave = {
   noteMode: true,
   mistakes: 0,
   hintCount: 0,
-  maxHintLevel: 0 as const,
+  maxHintLevel: 0,
   history: [],
   future: [],
   savedAt: 100,
-} as const;
+};
 
 describe("Sudoku local storage", () => {
   it("isolates saves by puzzle id and restores valid state", () => {
@@ -48,5 +54,31 @@ describe("Sudoku local storage", () => {
     const uuid = "123e4567-e89b-42d3-a456-426614174000";
     expect(getOrCreateAnonymousId(storage, () => uuid)).toBe(uuid);
     expect(getOrCreateAnonymousId(storage, () => "never-used")).toBe(uuid);
+  });
+
+  it("records the first-visit guide without coupling it to game progress", () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    };
+    expect(hasSeenOnboarding(storage)).toBe(false);
+    markOnboardingSeen(storage);
+    expect(values.get(ONBOARDING_STORAGE_KEY)).toBe("true");
+    expect(hasSeenOnboarding(storage)).toBe(true);
+  });
+
+  it("keeps the game usable when browser storage is blocked", () => {
+    const blockedStorage = {
+      getItem: () => { throw new Error("blocked"); },
+      setItem: () => { throw new Error("blocked"); },
+      removeItem: () => { throw new Error("blocked"); },
+    };
+    expect(loadSavedGame(blockedStorage, "p1", givens)).toBeNull();
+    expect(() => saveGame(blockedStorage, validSave)).not.toThrow();
+    expect(() => markOnboardingSeen(blockedStorage)).not.toThrow();
+    expect(getOrCreateAnonymousId(blockedStorage, () => "123e4567-e89b-42d3-a456-426614174000"))
+      .toBe("123e4567-e89b-42d3-a456-426614174000");
   });
 });

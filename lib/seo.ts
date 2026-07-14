@@ -6,14 +6,14 @@ import { SITE, siteUrl } from "@/lib/site";
 export type { AppEnvironment } from "@/lib/build-environment";
 
 export const HOME_SEO = {
-  title: "Free Daily Sudoku with Hints",
-  description: "Play PuzzGrind's free Daily Sudoku online with logical hints, progress recovery, and shareable results.",
+  title: "Daily Sudoku with Explainable Hints",
+  description: "Play one shared Sudoku every day with hints that explain the next logical step instead of revealing the answer.",
   path: "/",
 } as const;
 
 export const SUDOKU_SEO = {
-  title: "Daily Medium Sudoku — Free Online Puzzle",
-  description: "Play today's free Medium Sudoku with notes, undo and redo, logical hints, and saved progress you can resume.",
+  title: "Daily Sudoku with Logical Hints",
+  description: "Play today's shared Sudoku with notes, saved progress, and explainable hints that teach the logic behind each move.",
   path: "/sudoku",
 } as const;
 

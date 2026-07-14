@@ -34,6 +34,18 @@ type CompletionSample = {
   totalHints: number;
 };
 
+const PUZZLE_LOAD_TIMEOUT_MS = 10_000;
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = PUZZLE_LOAD_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 function formatTime(seconds: number): string {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
@@ -54,7 +66,10 @@ export function SudokuGame() {
   const [future, setFuture] = useState<GameSnapshot[]>([]);
   const [seconds, setSeconds] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [gameError, setGameError] = useState<string | null>(null);
+  const [sessionWarning, setSessionWarning] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [hydrated, setHydrated] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -79,13 +94,17 @@ export function SudokuGame() {
   }, [mistakes, notes, paused, seconds, values]);
 
   useEffect(() => {
-    fetch("/api/sudoku/today")
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Today's puzzle is unavailable.");
-        return (await response.json()) as DailyPuzzle;
-      })
-      .then((daily) => {
+    let active = true;
+
+    async function loadPuzzle() {
+      setLoadError(null);
+      setSessionWarning(null);
+      try {
+        const response = await fetchWithTimeout("/api/sudoku/today");
+        if (!response.ok) throw new Error("Today's puzzle is unavailable right now.");
+        const daily = (await response.json()) as DailyPuzzle;
         const initial = [...parseBoard(daily.givens)];
+        if (!active) return;
         const saved = loadSavedGame(localStorage, daily.puzzleId, daily.givens);
         restoredLocalRef.current = Boolean(saved);
         setPuzzle(daily);
@@ -106,40 +125,55 @@ export function SudokuGame() {
           setNotes(Array.from({ length: 81 }, () => []));
         }
         setHydrated(true);
+
         const anonymousId = getOrCreateAnonymousId(localStorage, () => crypto.randomUUID());
-        return fetch("/api/sudoku/session/start", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ anonymousId }),
-        });
-      })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Unable to start your game session.");
-        const result = await response.json() as {
-          boardState?: { values?: number[] };
-          durationSeconds?: number | null;
-          hintCount?: number;
-          maxHintLevel?: 0 | 1 | 2 | 3;
-          mistakes?: number;
-          notes?: number[][];
-          result?: GameResult | null;
-          sessionId: string;
-          sessionToken: string;
-        };
-        setSessionId(result.sessionId);
-        setSessionToken(result.sessionToken);
-        if (!restoredLocalRef.current && result.boardState?.values?.length === 81 && result.notes?.length === 81) {
-          setValues([...result.boardState.values]);
-          setNotes(result.notes.map((cell) => [...cell]));
-          setSeconds(result.durationSeconds ?? 0);
-          setMistakes(result.mistakes ?? 0);
-          setHintCount(result.hintCount ?? 0);
-          setMaxHintLevel(result.maxHintLevel ?? 0);
+        try {
+          const sessionResponse = await fetchWithTimeout("/api/sudoku/session/start", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ anonymousId }),
+          });
+          if (!sessionResponse.ok) throw new Error("Unable to start your game session.");
+          const result = await sessionResponse.json() as {
+            boardState?: { values?: number[] };
+            durationSeconds?: number | null;
+            hintCount?: number;
+            maxHintLevel?: 0 | 1 | 2 | 3;
+            mistakes?: number;
+            notes?: number[][];
+            result?: GameResult | null;
+            sessionId: string;
+            sessionToken: string;
+          };
+          if (!active) return;
+          setSessionId(result.sessionId);
+          setSessionToken(result.sessionToken);
+          if (!restoredLocalRef.current && result.boardState?.values?.length === 81 && result.notes?.length === 81) {
+            setValues([...result.boardState.values]);
+            setNotes(result.notes.map((cell) => [...cell]));
+            setSeconds(result.durationSeconds ?? 0);
+            setMistakes(result.mistakes ?? 0);
+            setHintCount(result.hintCount ?? 0);
+            setMaxHintLevel(result.maxHintLevel ?? 0);
+          }
+          if (result.result) setServerResult(result.result);
+        } catch {
+          if (active) setSessionWarning("You can keep playing. Hints and server sync are temporarily unavailable.");
         }
-        if (result.result) setServerResult(result.result);
-      })
-      .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "Unable to load Sudoku."));
-  }, []);
+      } catch (cause) {
+        if (!active) return;
+        const timedOut = cause instanceof DOMException && cause.name === "AbortError";
+        setLoadError(timedOut
+          ? "The puzzle took too long to load. Check your connection and try again."
+          : cause instanceof Error ? cause.message : "Unable to load today's Sudoku.");
+      }
+    }
+
+    void loadPuzzle();
+    return () => {
+      active = false;
+    };
+  }, [loadAttempt]);
 
   const currentSave = useCallback((): SavedGame | null => {
     if (!puzzle || !hydrated || values.length !== 81 || notes.length !== 81) return null;
@@ -349,7 +383,7 @@ export function SudokuGame() {
       setSample(payload.sample ?? null);
     }).catch((cause: unknown) => {
       completionStartedRef.current = false;
-      setError(cause instanceof Error ? cause.message : "Completion could not be verified");
+      setGameError(cause instanceof Error ? cause.message : "Completion could not be verified");
     });
   }, [complete, mistakes, notes, seconds, serverResult, sessionToken, values]);
 
@@ -426,11 +460,14 @@ export function SudokuGame() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [erase, inputNumber, serverResult, undo]);
 
-  if (error) return <div className="rounded-3xl bg-red-100 p-6 font-bold text-red-900">{error}</div>;
+  if (loadError) return <div className="rounded-3xl bg-red-100 p-6 text-center text-red-900" role="alert"><p className="font-bold">{loadError}</p><button className="mt-4 rounded-full bg-red-900 px-5 py-3 font-black text-white" onClick={() => setLoadAttempt((attempt) => attempt + 1)} type="button">Try Again</button></div>;
   if (!puzzle) return <div className="rounded-3xl bg-white/70 p-8 text-center font-bold">Loading today&apos;s puzzle…</div>;
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,36rem)_18rem]">
+    <div>
+      {sessionWarning && <p className="mb-4 rounded-2xl bg-amber-100 p-4 font-bold text-amber-950" role="status">{sessionWarning}</p>}
+      {gameError && <p className="mb-4 rounded-2xl bg-red-100 p-4 font-bold text-red-900" role="alert">{gameError}</p>}
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,36rem)_18rem]">
       <section>
         <div className="mb-4 flex items-center justify-between gap-3">
           <div><span className="rounded-full bg-emerald-950 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-white">Medium</span><span className="ml-3 text-sm text-[var(--ink-soft)]">{puzzle.puzzleDate} UTC</span></div>
@@ -504,6 +541,7 @@ export function SudokuGame() {
         </div>
         <p className="text-sm leading-6 text-[var(--ink-soft)]">Keyboard: 1–9 to enter, N for notes, Delete to erase, Ctrl/⌘+Z to undo.</p>
       </aside>
+      </div>
     </div>
   );
 }
