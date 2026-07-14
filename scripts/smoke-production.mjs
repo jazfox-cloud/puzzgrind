@@ -1,11 +1,8 @@
 import { resolveGitSha } from "./lib/cloudflare-artifact.mjs";
 import { evaluateHtmlCacheSafety } from "./lib/cache-safety.mjs";
+import { differingPageSemanticFields, extractPageSemantics } from "./lib/html-semantics.mjs";
 
 const ORIGIN = "https://puzzgrind.com";
-
-function occurrences(value, needle) {
-  return value.split(needle).length - 1;
-}
 
 function fail(label, message) {
   throw new Error(`Production smoke failed: ${label} ${message}`);
@@ -22,10 +19,16 @@ function assertDeploymentSafeCache(response, label) {
 }
 
 function assertProductionHtml(html, canonical, label) {
-  const canonicalForms = [`rel="canonical" href="${canonical}"`, `href="${canonical}" rel="canonical"`];
-  const canonicalCount = canonicalForms.reduce((count, form) => count + occurrences(html, form), 0);
-  if (canonicalCount !== 1) fail(label, `has ${canonicalCount} Production canonicals`);
-  if (html.toLowerCase().includes("noindex")) fail(label, "contains noindex");
+  let semantics;
+  try {
+    semantics = extractPageSemantics(html);
+  } catch (error) {
+    fail(label, `has invalid page semantics: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  if (semantics.canonical !== canonical) fail(label, `has canonical ${JSON.stringify(semantics.canonical)}, expected ${JSON.stringify(canonical)}`);
+  if (semantics.ogUrl !== canonical) fail(label, `has og:url ${JSON.stringify(semantics.ogUrl)}, expected ${JSON.stringify(canonical)}`);
+  if (semantics.robots.toLowerCase().split(/[\s,]+/u).includes("noindex")) fail(label, "contains noindex");
+  return semantics;
 }
 
 async function read(path, query) {
@@ -43,9 +46,10 @@ for (const [path, canonical] of [["/", `${ORIGIN}/`], ["/privacy", `${ORIGIN}/pr
   if (standard.response.status !== 200 || busted.response.status !== 200) fail(path, `returned ${standard.response.status}/${busted.response.status}`);
   assertDeploymentSafeCache(standard.response, path);
   assertDeploymentSafeCache(busted.response, `${path}?deploy-check`);
-  assertProductionHtml(standard.body, canonical, path);
-  assertProductionHtml(busted.body, canonical, `${path}?deploy-check`);
-  if (standard.body !== busted.body) fail(path, "standard and cache-busted HTML differ");
+  const standardSemantics = assertProductionHtml(standard.body, canonical, path);
+  const bustedSemantics = assertProductionHtml(busted.body, canonical, `${path}?deploy-check`);
+  const differences = differingPageSemanticFields(standardSemantics, bustedSemantics);
+  if (differences.length > 0) fail(path, `standard and cache-busted page semantics differ: ${differences.join(", ")}`);
   console.log(`Production smoke: ${path} standard/cache-busted SEO and cache policy match`);
 }
 
