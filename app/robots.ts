@@ -1,11 +1,10 @@
 import type { MetadataRoute } from "next";
 
-import { getAppEnvironment, isIndexableEnvironment } from "@/lib/seo";
+import { getBuildAppEnvironment, type AppEnvironment } from "@/lib/build-environment";
+import { isIndexableEnvironment } from "@/lib/seo";
 import { SITE, siteUrl } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
-
-export function createRobots(environment: ReturnType<typeof getAppEnvironment>): MetadataRoute.Robots {
+export function createRobots(environment: AppEnvironment): MetadataRoute.Robots {
   if (!isIndexableEnvironment(environment)) {
     return { rules: { userAgent: "*", disallow: "/" } };
   }
@@ -17,5 +16,5 @@ export function createRobots(environment: ReturnType<typeof getAppEnvironment>):
 }
 
 export default function robots(): MetadataRoute.Robots {
-  return createRobots(getAppEnvironment());
+  return createRobots(getBuildAppEnvironment());
 }

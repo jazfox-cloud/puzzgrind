@@ -2,10 +2,11 @@ import Link from "next/link";
 
 import { JsonLd } from "@/components/JsonLd";
 import { SudokuGame } from "@/components/sudoku/SudokuGame";
-import { createPageMetadata, getAppEnvironment, SUDOKU_JSON_LD, SUDOKU_SEO } from "@/lib/seo";
+import { getBuildAppEnvironment } from "@/lib/build-environment";
+import { createPageMetadata, SUDOKU_JSON_LD, SUDOKU_SEO } from "@/lib/seo";
 
 export function generateMetadata() {
-  return createPageMetadata(SUDOKU_SEO, getAppEnvironment());
+  return createPageMetadata(SUDOKU_SEO, getBuildAppEnvironment());
 }
 
 export const dynamic = "force-dynamic";

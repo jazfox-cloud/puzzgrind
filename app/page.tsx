@@ -1,15 +1,16 @@
 import Link from "next/link";
 
 import { JsonLd } from "@/components/JsonLd";
-import { createPageMetadata, getAppEnvironment, HOME_SEO, isIndexableEnvironment, WEBSITE_JSON_LD } from "@/lib/seo";
+import { getBuildAppEnvironment } from "@/lib/build-environment";
+import { createPageMetadata, HOME_SEO, isIndexableEnvironment, WEBSITE_JSON_LD } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 
 export function generateMetadata() {
-  return createPageMetadata(HOME_SEO, getAppEnvironment());
+  return createPageMetadata(HOME_SEO, getBuildAppEnvironment());
 }
 
 export default function HomePage() {
-  const indexable = isIndexableEnvironment(getAppEnvironment());
+  const indexable = isIndexableEnvironment(getBuildAppEnvironment());
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-8 sm:px-10">
       {indexable ? <link href={siteUrl("/")} rel="canonical" /> : null}

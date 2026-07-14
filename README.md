@@ -13,7 +13,7 @@ pnpm dev
 
 ## Analytics
 
-GA4 is loaded through Next.js `@next/third-parties/google` only when the deployed runtime reports `APP_ENV=production`, `NEXT_PUBLIC_GA_MEASUREMENT_ID` contains a valid `G-` Measurement ID, and the browser's versioned analytics consent state is `granted`. Configure the Production build environment with:
+GA4 is loaded through Next.js `@next/third-parties/google` only when the immutable application artifact was built with `BUILD_APP_ENV=production`, `NEXT_PUBLIC_GA_MEASUREMENT_ID` contains a valid `G-` Measurement ID, and the browser's versioned analytics consent state is `granted`. Configure the Production build environment with:
 
 ```bash
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-N1NLGSYBKD
@@ -26,6 +26,22 @@ Consent is stored only in the browser under `puzzgrind.analytics-consent.v1` as 
 The root layout initializes GA once. Google Analytics Enhanced Measurement handles initial and App Router history-based page views; keep **Page changes based on browser history events** enabled in the GA4 property. Do not add a second automatic page-view listener unless Enhanced Measurement is disabled, or page views will be duplicated. The analytics module also exposes an explicit `trackPageView` escape hatch and typed Sudoku event helpers from `lib/analytics/events.ts` for future natural instrumentation points.
 
 The centralized three-state consent model is structured for a future Consent Mode integration, but this foundation does not add Google Consent Mode, a full CMP, Search Console, Ads, or gameplay instrumentation. Before a Production merge, set the build variable in the approved hosting environment; no Cloudflare Dashboard or Wrangler configuration is changed by this repository commit.
+
+## Build-time environment contract
+
+SEO metadata, canonical URLs, robots rules, page indexability, and the Analytics environment gate use `BUILD_APP_ENV`. This server/build-only value is frozen into each Next.js artifact and is deliberately separate from the Worker runtime `APP_ENV` used by D1, Rate Limiting, trusted-client identity, and other API safeguards.
+
+| Build target | Artifact environment | Resolution |
+| --- | --- | --- |
+| Production (`main`) | `BUILD_APP_ENV=production` | Cloudflare's `WORKERS_CI_BRANCH=main`; `pnpm deploy` also pins the value explicitly before its guarded rebuild |
+| PR / non-production branch | `BUILD_APP_ENV=preview` | Any non-`main` `WORKERS_CI_BRANCH` |
+| Staging | `BUILD_APP_ENV=staging` | `pnpm deploy:staging` pins the value explicitly |
+| Local | `BUILD_APP_ENV=local` | `.env.example` or the safe default |
+| Test | `BUILD_APP_ENV=test` | Explicit value or the test runner |
+
+An explicit invalid value fails the build. A Cloudflare build without branch provenance also fails instead of producing an ambiguously indexable artifact. Unclassified local builds fail safe to `local`, so they never emit Production canonical or indexable metadata.
+
+Cloudflare Workers Builds injects `WORKERS_CI` and `WORKERS_CI_BRANCH` automatically. Because the connected Production branch remains `main`, no additional Dashboard variable is required for this contract. If the Production branch changes, update the resolver and its tests in the same controlled release. Runtime `APP_ENV` bindings in `wrangler.jsonc` remain unchanged and cannot override metadata in an already-built artifact.
 
 ## Quality checks
 

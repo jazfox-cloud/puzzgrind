@@ -1,9 +1,10 @@
 import Link from "next/link";
 
-import { createPageMetadata, getAppEnvironment, PRIVACY_SEO } from "@/lib/seo";
+import { getBuildAppEnvironment } from "@/lib/build-environment";
+import { createPageMetadata, PRIVACY_SEO } from "@/lib/seo";
 
 export function generateMetadata() {
-  return createPageMetadata(PRIVACY_SEO, getAppEnvironment());
+  return createPageMetadata(PRIVACY_SEO, getBuildAppEnvironment());
 }
 
 export default function PrivacyPage() {

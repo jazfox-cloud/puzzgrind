@@ -1,9 +1,9 @@
-import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { Metadata } from "next";
 
+import type { AppEnvironment } from "@/lib/build-environment";
 import { SITE, siteUrl } from "@/lib/site";
 
-export type AppEnvironment = "local" | "preview" | "production" | "staging" | "test";
+export type { AppEnvironment } from "@/lib/build-environment";
 
 export const HOME_SEO = {
   title: "Free Daily Sudoku with Hints",
@@ -42,17 +42,6 @@ export const SUDOKU_JSON_LD = {
   applicationCategory: "GameApplication",
   operatingSystem: "Web",
 } as const;
-
-export function getAppEnvironment(): AppEnvironment {
-  try {
-    return getCloudflareContext().env.APP_ENV ?? "local";
-  } catch {
-    const value = process.env.APP_ENV;
-    return value === "preview" || value === "production" || value === "staging" || value === "test"
-      ? value
-      : "local";
-  }
-}
 
 export function isIndexableEnvironment(environment: AppEnvironment) {
   return environment === "production";
