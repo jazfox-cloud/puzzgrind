@@ -28,6 +28,14 @@ describe("semantic HTML cache safety", () => {
     expectSafe("public, max-age=0", "", "no-store");
   });
 
+  it("accepts private no-store when CDN-specific headers are missing", () => {
+    expectSafe("private, no-store");
+  });
+
+  it("accepts private no-store with explicit CDN no-store", () => {
+    expectSafe("private, no-store", "no-store");
+  });
+
   it.each([
     ["old one-year shared cache regression", "public, max-age=0, s-maxage=31536000, must-revalidate", "", ""],
     ["private response with shared cache TTL", "private, no-store, s-maxage=60", "", ""],
@@ -39,6 +47,10 @@ describe("semantic HTML cache safety", () => {
     ["public zero TTL without CDN no-store", "public, max-age=0", "", ""],
     ["positive CDN TTL", "private, no-store", "max-age=60", ""],
     ["positive Cloudflare CDN TTL", "private, no-store", "", "public, max-age=31536000"],
+    ["ambiguous public CDN policy", "private, no-store", "public", ""],
+    ["zero-TTL CDN policy without no-store", "private, no-store", "max-age=0", ""],
+    ["private Cloudflare CDN policy without no-store", "private, no-store", "", "private"],
+    ["one safe and one ambiguous CDN policy", "public, max-age=0", "no-store", "public"],
   ])("rejects %s", (_label, cacheControl, cdnCacheControl, cloudflareCdnCacheControl) => {
     expectUnsafe(cacheControl, cdnCacheControl, cloudflareCdnCacheControl);
   });

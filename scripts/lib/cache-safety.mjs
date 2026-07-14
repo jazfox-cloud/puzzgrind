@@ -24,6 +24,17 @@ function inspectDirectives(value, label) {
   return undefined;
 }
 
+function inspectCdnDirectives(value, label) {
+  if (!value) return undefined;
+  const directives = parseDirectives(value);
+  if (directives.some(({ name }) => name === "public")) return `${label} contains public`;
+  if (directives.some(({ name }) => name === "max-age")) return `${label} contains max-age`;
+  if (directives.some(({ name }) => name === "s-maxage")) return `${label} contains s-maxage`;
+  if (directives.some(({ name }) => name === "immutable")) return `${label} contains immutable`;
+  if (!directives.some(({ name }) => name === "no-store")) return `${label} does not explicitly contain no-store`;
+  return undefined;
+}
+
 function hasDirective(value, name, expectedValue) {
   return parseDirectives(value).some((directive) => {
     if (directive.name !== name) return false;
@@ -41,7 +52,7 @@ export function evaluateHtmlCacheSafety({ cacheControl = "", cdnCacheControl = "
   const browserIssue = inspectDirectives(browser, "Cache-Control");
   if (browserIssue) return { safe: false, reason: browserIssue };
   for (const [label, value] of cdnHeaders) {
-    const issue = inspectDirectives(value, label);
+    const issue = inspectCdnDirectives(value, label);
     if (issue) return { safe: false, reason: issue };
   }
 
