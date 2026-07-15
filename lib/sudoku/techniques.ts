@@ -66,3 +66,7 @@ export function findLockedCandidates(board: Board): TechniqueStep | null {
 export function findNextBasicStep(board: Board): TechniqueStep | null {
   return findNakedSingle(board) ?? findHiddenSingle(board) ?? findLockedCandidates(board);
 }
+
+export function findNextPlacementStep(board: Board): TechniqueStep | null {
+  return findNakedSingle(board) ?? findHiddenSingle(board);
+}

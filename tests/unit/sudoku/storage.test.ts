@@ -30,12 +30,18 @@ const validSave: SavedGame = {
   history: [],
   future: [],
   savedAt: 100,
+  completedResult: null,
 };
 
 describe("Sudoku local storage", () => {
   it("isolates saves by puzzle id and restores valid state", () => {
     expect(gameSaveKey("p1")).not.toBe(gameSaveKey("p2"));
     expect(parseSavedGame(JSON.stringify(validSave), "p1", givens)).toMatchObject({ seconds: 42, noteMode: true });
+  });
+
+  it("restores a locally verified completion result", () => {
+    const completed = { ...validSave, completedResult: { durationSeconds: 522, hintCount: 1, maxHintLevel: 2, mistakes: 0 } };
+    expect(parseSavedGame(JSON.stringify(completed), "p1", givens)?.completedResult).toEqual(completed.completedResult);
   });
 
   it("rejects malformed, stale, and given-altering saves", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { findHiddenSingle, findLockedCandidates, findNakedSingle, findNextBasicStep, parseBoard } from "@/lib/sudoku";
+import { findHiddenSingle, findLockedCandidates, findNakedSingle, findNextBasicStep, findNextPlacementStep, parseBoard } from "@/lib/sudoku";
 
 const solved = "534678912672195348198342567859761423426853791713924856961537284287419635345286179";
 const classic = "530070000600195000098000060800060003400803001700020006060000280000419005000080079";
@@ -29,5 +29,11 @@ describe("Sudoku technique recognition", () => {
     const board = parseBoard(classic);
     expect(findNextBasicStep(board)).toEqual(findNextBasicStep(board));
     expect(findNextBasicStep(parseBoard(solved))).toBeNull();
+  });
+
+  it("limits an applicable hint to a real single-cell placement", () => {
+    const step = findNextPlacementStep(parseBoard(classic));
+    expect(step?.technique === "naked_single" || step?.technique === "hidden_single").toBe(true);
+    expect(step?.targetCells).toHaveLength(1);
   });
 });

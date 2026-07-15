@@ -5,7 +5,7 @@ import { SudokuHintEventRepository, SudokuPuzzleRepository, SudokuSessionReposit
 import { isJsonObject, JSON_BODY_LIMITS, readJsonBody } from "@/lib/api/request";
 import { limitApiRequest } from "@/lib/api/rate-limit";
 import { authorizeSession } from "@/lib/security/session-authorization";
-import { findConflicts, findGivenViolations, findNextBasicStep, parseBoard } from "@/lib/sudoku";
+import { findConflicts, findGivenViolations, findNextPlacementStep, parseBoard } from "@/lib/sudoku";
 import { explainStep } from "@/lib/sudoku/hints";
 import type { HintLevel } from "@/lib/sudoku/hints";
 
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     if (findGivenViolations(parseBoard(puzzle.givens), board).length || findConflicts(board).length) {
       return NextResponse.json({ error: "invalid_board" }, { status: 422 });
     }
-    const step = findNextBasicStep(board);
+    const step = findNextPlacementStep(board);
     if (!step) return NextResponse.json({ error: "no_basic_hint_available" }, { status: 409 });
     const level = body.level as HintLevel;
     await new SudokuHintEventRepository(db).create({

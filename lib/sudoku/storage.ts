@@ -9,7 +9,15 @@ export type GameSnapshot = {
   values: number[];
 };
 
+export type SavedCompletionResult = {
+  durationSeconds: number;
+  hintCount: number;
+  maxHintLevel: number;
+  mistakes: number;
+};
+
 export type SavedGame = GameSnapshot & {
+  completedResult?: SavedCompletionResult | null;
   future: GameSnapshot[];
   history: GameSnapshot[];
   hintCount: number;
@@ -84,6 +92,15 @@ function validSnapshot(value: unknown): value is GameSnapshot {
   return validValues(snapshot.values) && validNotes(snapshot.notes);
 }
 
+function validCompletionResult(value: unknown): value is SavedCompletionResult {
+  if (!value || typeof value !== "object") return false;
+  const result = value as Partial<SavedCompletionResult>;
+  return Number.isInteger(result.durationSeconds) && (result.durationSeconds ?? 0) >= 1 &&
+    Number.isInteger(result.hintCount) && (result.hintCount ?? -1) >= 0 &&
+    Number.isInteger(result.maxHintLevel) && (result.maxHintLevel ?? -1) >= 0 && (result.maxHintLevel ?? 4) <= 3 &&
+    Number.isInteger(result.mistakes) && (result.mistakes ?? -1) >= 0;
+}
+
 export function parseSavedGame(raw: string, puzzleId: string, givens: string): SavedGame | null {
   try {
     const value = JSON.parse(raw) as Partial<SavedGame>;
@@ -98,6 +115,7 @@ export function parseSavedGame(raw: string, puzzleId: string, givens: string): S
       ![0, 1, 2, 3].includes(value.maxHintLevel ?? -1) ||
       !Number.isInteger(value.seconds) || (value.seconds ?? -1) < 0 ||
       !Number.isInteger(value.savedAt) || (value.savedAt ?? -1) < 0 ||
+      !(value.completedResult === undefined || value.completedResult === null || validCompletionResult(value.completedResult)) ||
       !(value.selected === null || (Number.isInteger(value.selected) && (value.selected ?? -1) >= 0 && (value.selected ?? 81) < 81))
     ) return null;
 

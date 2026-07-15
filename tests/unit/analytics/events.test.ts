@@ -26,20 +26,30 @@ describe("analytics event API", () => {
     });
   });
 
-  it("exposes the five typed Sudoku event helpers", () => {
+  it("exposes the engagement-loop event helpers", () => {
     window.__puzzgrindAnalyticsEnabled = true;
-    sudokuAnalytics.gameStarted();
-    sudokuAnalytics.completed({ elapsed_seconds: 300 });
-    sudokuAnalytics.hintUsed({ hint_level: 2 });
-    sudokuAnalytics.resume();
-    sudokuAnalytics.share();
+    sudokuAnalytics.hintOpened({ technique: "hidden_single" });
+    sudokuAnalytics.hintLevelViewed({ hint_level: 2 });
+    sudokuAnalytics.hintApplied({ technique: "hidden_single" });
+    sudokuAnalytics.puzzleCompleted({ elapsed_seconds: 300 });
+    sudokuAnalytics.resultShared();
+    sudokuAnalytics.resultCopied();
+    sudokuAnalytics.completionFeedback({ rating: "just_right" });
 
     expect(sendGAEvent.mock.calls.map((call) => call[1])).toEqual([
-      "sudoku_game_started",
-      "sudoku_completed",
-      "sudoku_hint_used",
-      "sudoku_resume",
-      "sudoku_share",
+      "hint_opened",
+      "hint_level_viewed",
+      "hint_applied",
+      "puzzle_completed",
+      "result_shared",
+      "result_copied",
+      "completion_feedback",
     ]);
+  });
+
+  it("contains analytics failures", () => {
+    window.__puzzgrindAnalyticsEnabled = true;
+    sendGAEvent.mockImplementation(() => { throw new Error("GA unavailable"); });
+    expect(sudokuAnalytics.hintOpened()).toBe(false);
   });
 });

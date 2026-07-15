@@ -126,6 +126,113 @@ test("analytics rejection does not prevent Sudoku play", async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem("puzzgrind.analytics-consent.v1"))).toBe("denied");
 });
 
+test("reveals one hint in three stages, highlights it, and lets Apply Move be undone", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("puzzgrind_sudoku_onboarding_seen_v1", "true"));
+  await page.route("**/api/sudoku/today", (route) => route.fulfill({ json: dailyPuzzle }));
+  await page.route("**/api/sudoku/session/start", (route) => route.fulfill({ json: { sessionId: "session-test", sessionToken: "token-test" } }));
+  await page.route("**/api/sudoku/session/save", (route) => route.fulfill({ json: { ok: true } }));
+  let hintRequests = 0;
+  await page.route("**/api/sudoku/hint", (route) => {
+    hintRequests += 1;
+    return route.fulfill({
+      json: {
+        hint: {
+          candidate: 4,
+          explanation: "Look at Row 1. One number has only one possible position.",
+          level: 1,
+          relatedCells: [0, 1, 3, 4, 5, 6, 7, 8],
+          targetCells: [2],
+          technique: "hidden_single",
+          title: "Hidden Single",
+        },
+      },
+    });
+  });
+
+  await page.goto("/sudoku");
+  await page.getByRole("button", { name: "Get a hint" }).click();
+  await expect(page.getByText("Step 1 of 3 · Hidden Single")).toBeVisible();
+  await expect(page.getByRole("gridcell", { name: "Row 1, column 1, 5" })).toHaveClass(/ring-amber-400/);
+  await page.getByRole("button", { name: "Show More" }).click();
+  await expect(page.getByText("Step 2 of 3 · Hidden Single")).toBeVisible();
+  await page.getByRole("button", { name: "Show the Cell" }).click();
+  await expect(page.getByText("Step 3 of 3 · Hidden Single")).toBeVisible();
+  await expect(page.getByRole("gridcell", { name: "Row 1, column 3, empty" })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("button", { name: "Apply Move" }).click();
+  await expect(page.getByRole("gridcell", { name: "Row 1, column 3, 4" })).toBeVisible();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByRole("gridcell", { name: "Row 1, column 3, empty" })).toBeVisible();
+  expect(hintRequests).toBe(1);
+});
+
+test("verifies completion once, restores it after refresh, and fits the result dialog at 390px", async ({ page }) => {
+  const solved = "534678912672195348198342567859761423426853791713924856961537284287419635345286179";
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(({ board }) => {
+    localStorage.setItem("puzzgrind_sudoku_onboarding_seen_v1", "true");
+    if (!localStorage.getItem("puzzgrind_sudoku_daily-test")) localStorage.setItem("puzzgrind_sudoku_daily-test", JSON.stringify({
+      completedResult: null,
+      future: [],
+      hintCount: 1,
+      history: [],
+      maxHintLevel: 3,
+      mistakes: 0,
+      noteMode: false,
+      notes: Array.from({ length: 81 }, () => []),
+      paused: false,
+      puzzleId: "daily-test",
+      savedAt: Date.now(),
+      seconds: 522,
+      selected: 2,
+      values: [...board].map((value, index) => index === 2 ? 0 : Number(value)),
+      version: 2,
+    }));
+    if (!localStorage.getItem("puzzgrind_sudoku_engagement_v1")) localStorage.setItem("puzzgrind_sudoku_engagement_v1", JSON.stringify({
+      bestStreak: 2,
+      completionTime: 600,
+      currentStreak: 2,
+      feedbackByPuzzleId: {},
+      hintsUsed: 0,
+      lastCompletedDate: "2026-07-13",
+      lastCompletedPuzzleId: "daily-yesterday",
+      puzzlesCompleted: 2,
+    }));
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: async (text: string) => { (window as typeof window & { copiedResult?: string }).copiedResult = text; } },
+    });
+  }, { board: solved });
+  await page.route("**/api/sudoku/today", (route) => route.fulfill({ json: dailyPuzzle }));
+  await page.route("**/api/sudoku/session/start", (route) => route.fulfill({ json: { sessionId: "session-test", sessionToken: "token-test" } }));
+  await page.route("**/api/sudoku/session/save", (route) => route.fulfill({ json: { ok: true } }));
+  let completionRequests = 0;
+  await page.route("**/api/sudoku/session/complete", (route) => {
+    completionRequests += 1;
+    return route.fulfill({ json: { result: { durationSeconds: 522, hintCount: 1, maxHintLevel: 3, mistakes: 0 } } });
+  });
+
+  await page.goto("/sudoku");
+  await page.getByRole("button", { name: "4", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Puzzle complete!" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("08:42")).toBeVisible();
+  await expect(dialog.getByText("3 days")).toBeVisible();
+  await expect(dialog.getByTestId("tomorrow-countdown")).toHaveText(/^\d{2}:\d{2}:\d{2}$/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await dialog.getByRole("button", { name: "Copy Result" }).click();
+  await expect(dialog.getByText("Result copied to clipboard.")).toBeVisible();
+  expect(await page.evaluate(() => (window as typeof window & { copiedResult?: string }).copiedResult)).toBe(
+    "PuzzGrind Daily Sudoku\nSolved in 08:42\nHints used: 1\n🔥 3 day streak\n\nCan you solve today’s puzzle?\nhttps://puzzgrind.com/sudoku",
+  );
+  await expect.poll(() => page.evaluate(() => {
+    const saved = localStorage.getItem("puzzgrind_sudoku_daily-test");
+    return saved ? Boolean((JSON.parse(saved) as { completedResult?: unknown }).completedResult) : false;
+  })).toBe(true);
+  await page.reload();
+  await expect(page.getByRole("dialog", { name: "Puzzle complete!" })).toBeVisible();
+  expect(completionRequests).toBe(1);
+});
+
 test("keeps the launch page and game within a mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => localStorage.setItem("puzzgrind_sudoku_onboarding_seen_v1", "true"));
