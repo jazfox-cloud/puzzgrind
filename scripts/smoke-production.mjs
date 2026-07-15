@@ -3,6 +3,7 @@ import { evaluateHtmlCacheSafety } from "./lib/cache-safety.mjs";
 import { differingPageSemanticFields, extractPageSemantics } from "./lib/html-semantics.mjs";
 
 const ORIGIN = "https://puzzgrind.com";
+const HTTP_ORIGIN = "http://puzzgrind.com";
 
 function fail(label, message) {
   throw new Error(`Production smoke failed: ${label} ${message}`);
@@ -39,7 +40,20 @@ async function read(path, query) {
   return { body, response };
 }
 
+async function assertHttpsRedirect(path) {
+  const source = new URL(path, HTTP_ORIGIN);
+  source.searchParams.set("redirect-check", "1");
+  const expected = new URL(path, ORIGIN);
+  expected.searchParams.set("redirect-check", "1");
+  const response = await fetch(source, { redirect: "manual" });
+  const location = response.headers.get("location");
+  if (![301, 308].includes(response.status)) fail(source.href, `returned ${response.status}, expected 301 or 308`);
+  if (location !== expected.href) fail(source.href, `redirected to ${JSON.stringify(location)}, expected ${JSON.stringify(expected.href)}`);
+  console.log(`Production smoke: ${source.href} -> ${response.status} ${location}`);
+}
+
 const gitSha = resolveGitSha();
+for (const path of ["/", "/sudoku", "/privacy"]) await assertHttpsRedirect(path);
 for (const [path, canonical] of [["/", `${ORIGIN}/`], ["/privacy", `${ORIGIN}/privacy`]]) {
   const standard = await read(path);
   const busted = await read(path, gitSha);

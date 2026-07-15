@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { JsonLd } from "@/components/JsonLd";
+import { SiteFooter } from "@/components/SiteFooter";
 import { getBuildAppEnvironment } from "@/lib/build-environment";
 import { createPageMetadata, HOME_SEO, isIndexableEnvironment, WEBSITE_JSON_LD } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
@@ -74,9 +75,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="border-t border-emerald-950/15 py-5 text-sm text-[var(--ink-soft)]">
-        © {new Date().getUTCFullYear()} PuzzGrind
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

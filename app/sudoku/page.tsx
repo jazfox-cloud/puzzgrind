@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { JsonLd } from "@/components/JsonLd";
+import { SiteFooter } from "@/components/SiteFooter";
 import { FirstVisitGuide } from "@/components/sudoku/FirstVisitGuide";
 import { SudokuGame } from "@/components/sudoku/SudokuGame";
 import { getBuildAppEnvironment } from "@/lib/build-environment";
@@ -19,5 +20,6 @@ export default function SudokuPage() {
     <div className="mb-7"><p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-800">Today&apos;s challenge</p><h1 className="mt-2 text-4xl font-black tracking-[-0.05em] sm:text-5xl">Daily Sudoku</h1><p className="mt-3 text-[var(--ink-soft)]">One Medium puzzle, shared worldwide. Take your time and trust the logic.</p></div>
     <FirstVisitGuide />
     <SudokuGame />
+    <SiteFooter className="mt-12" />
   </main>;
 }

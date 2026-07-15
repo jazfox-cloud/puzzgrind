@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { SiteFooter } from "@/components/SiteFooter";
 import { getBuildAppEnvironment } from "@/lib/build-environment";
 import { createPageMetadata, PRIVACY_SEO } from "@/lib/seo";
 
@@ -62,6 +63,7 @@ export default function PrivacyPage() {
       <Link className="mt-12 inline-flex rounded-full bg-emerald-950 px-5 py-3 font-bold text-white" href="/sudoku">
         Play Daily Sudoku
       </Link>
+      <SiteFooter className="mt-12" />
     </main>
   );
 }
