@@ -1,6 +1,6 @@
 import { DatabaseError } from "./errors";
 import { hintTechniques, puzzleStatuses, sessionStatuses } from "./sudoku-types";
-import type { SudokuHintEvent, SudokuPuzzle, SudokuPuzzleStats, SudokuSession } from "./sudoku-types";
+import type { RankedSudokuLeaderboardEntry, SudokuHintEvent, SudokuPuzzle, SudokuPuzzleStats, SudokuSession } from "./sudoku-types";
 
 type PuzzleRow = {
   id: string;
@@ -55,6 +55,15 @@ type HintEventRow = {
   hint_level: number;
   target_cells_json: string;
   created_at: number;
+};
+
+type RankedLeaderboardRow = {
+  display_name: string;
+  player_key_hash: string;
+  rank: number;
+  total_count: number;
+  verified_completion_seconds: number;
+  verified_hints_used: number;
 };
 
 function parseJson<T>(value: string, field: string): T {
@@ -146,4 +155,15 @@ export function mapHintEventRow(row: HintEventRow): SudokuHintEvent {
   };
 }
 
-export type { HintEventRow, PuzzleRow, SessionRow, StatsRow };
+export function mapRankedLeaderboardRow(row: RankedLeaderboardRow): RankedSudokuLeaderboardEntry {
+  return {
+    displayName: row.display_name,
+    playerKeyHash: row.player_key_hash,
+    rank: row.rank,
+    totalCount: row.total_count,
+    verifiedCompletionSeconds: row.verified_completion_seconds,
+    verifiedHintsUsed: row.verified_hints_used,
+  };
+}
+
+export type { HintEventRow, PuzzleRow, RankedLeaderboardRow, SessionRow, StatsRow };

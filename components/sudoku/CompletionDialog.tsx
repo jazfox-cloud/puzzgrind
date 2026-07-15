@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { formatResultTime } from "@/lib/sudoku/engagement";
 import type { CompletionFeedback, LocalSudokuStats } from "@/lib/sudoku/engagement";
 
@@ -10,6 +12,7 @@ type Result = {
 
 type Props = {
   feedback: CompletionFeedback | null;
+  leaderboardSlot?: ReactNode;
   onClose: () => void;
   onCopy: () => void;
   onFeedback: (feedback: CompletionFeedback) => void;
@@ -34,6 +37,7 @@ const feedbackOptions = [
 
 export function CompletionDialog({
   feedback,
+  leaderboardSlot,
   onClose,
   onCopy,
   onFeedback,
@@ -64,6 +68,8 @@ export function CompletionDialog({
           <p className="text-xs font-black uppercase tracking-[0.15em] text-[var(--accent)]">Tomorrow&apos;s puzzle arrives in:</p>
           <p className="mt-2 font-mono text-3xl font-black" data-testid="tomorrow-countdown">{countdown(secondsToNext)}</p>
         </div>
+
+        {leaderboardSlot}
 
         <fieldset className="mt-6">
           <legend className="font-black">How did today&apos;s puzzle feel?</legend>

@@ -233,6 +233,58 @@ test("verifies completion once, restores it after refresh, and fits the result d
   expect(completionRequests).toBe(1);
 });
 
+test("shows Top 10/20 and lets a completed anonymous player join at 390px with Analytics denied", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const entries = Array.from({ length: 20 }, (_, index) => ({
+    displayName: index === 9 ? "VeryLongName-1234" : `Player ${index + 1}`,
+    durationSeconds: 90 + index,
+    hintsUsed: Math.floor(index / 5),
+    isYou: false,
+    rank: index + 1,
+  }));
+  await page.addInitScript(() => {
+    localStorage.setItem("puzzgrind_sudoku_onboarding_seen_v1", "true");
+    localStorage.setItem("puzzgrind.analytics-consent.v1", "denied");
+    localStorage.setItem("puzzgrind_sudoku_daily-test", JSON.stringify({
+      completedResult: { durationSeconds: 522, hintCount: 1, maxHintLevel: 3, mistakes: 0 },
+      future: [], hintCount: 1, history: [], maxHintLevel: 3, mistakes: 0, noteMode: false,
+      notes: Array.from({ length: 81 }, () => []), paused: false, puzzleId: "daily-test",
+      savedAt: Date.now(), seconds: 522, selected: null,
+      values: [..."534678912672195348198342567859761423426853791713924856961537284287419635345286179"].map(Number),
+      version: 2,
+    }));
+  });
+  await page.route("**/api/sudoku/today", (route) => route.fulfill({ json: dailyPuzzle }));
+  await page.route("**/api/sudoku/session/start", (route) => route.fulfill({ json: { sessionId: "session-test", sessionToken: "token-test" } }));
+  await page.route("**/api/sudoku/leaderboard**", (route) => {
+    if (route.request().method() === "POST") return route.fulfill({ status: 201, json: {
+      completionCount: 26, entries: entries.map((entry) => entry.rank === 12 ? { ...entry, displayName: "Ada-42", isYou: true } : entry),
+      joinedCount: 20, ownRank: 12, puzzleDate: dailyPuzzle.puzzleDate, puzzleId: dailyPuzzle.puzzleId,
+    } });
+    const expanded = route.request().url().includes("limit=20");
+    return route.fulfill({ json: {
+      completionCount: 25, entries: entries.slice(0, expanded ? 20 : 10), joinedCount: 20, ownRank: null,
+      puzzleDate: dailyPuzzle.puzzleDate, puzzleId: dailyPuzzle.puzzleId,
+    } });
+  });
+
+  await page.goto("/sudoku");
+  await expect(page.getByRole("heading", { name: "Today's Leaderboard" })).toBeVisible();
+  await expect(page.getByText("25 completed · 20 joined", { exact: true })).toBeVisible();
+  await expect(page.getByRole("listitem")).toHaveCount(10);
+
+  const dialog = page.getByRole("dialog", { name: "Puzzle complete!" });
+  await dialog.getByRole("button", { name: "Join today’s leaderboard" }).click();
+  await dialog.getByLabel("Anonymous nickname").fill("Ada-42");
+  await dialog.getByRole("button", { name: "Submit score" }).click();
+  await expect(dialog.getByText("You ranked #12 today")).toBeVisible();
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await page.getByRole("button", { name: "Show Top 20" }).click();
+  await expect(page.getByRole("listitem")).toHaveCount(20);
+  await expect(page.locator('script[src*="googletagmanager.com"]')).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test("keeps the launch page and game within a mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => localStorage.setItem("puzzgrind_sudoku_onboarding_seen_v1", "true"));

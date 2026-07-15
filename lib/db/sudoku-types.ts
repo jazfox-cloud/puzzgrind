@@ -69,3 +69,23 @@ export type SudokuHintEvent = {
   targetCells: number[];
   createdAt: number;
 };
+
+export type SudokuLeaderboardEntry = {
+  completedAt: number;
+  createdAt: number;
+  displayName: string;
+  id: string;
+  playerKeyHash: string;
+  puzzleDate: string;
+  puzzleId: string;
+  sessionId: string;
+  verifiedCompletionSeconds: number;
+  verifiedHintsUsed: number;
+};
+
+export type RankedSudokuLeaderboardEntry = Pick<
+  SudokuLeaderboardEntry,
+  "displayName" | "playerKeyHash" | "verifiedCompletionSeconds" | "verifiedHintsUsed"
+> & { rank: number; totalCount: number };
+
+export type LeaderboardRejectionReason = "completion_too_fast" | "completion_too_slow";

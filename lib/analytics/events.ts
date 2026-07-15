@@ -7,6 +7,10 @@ export type AnalyticsEventName =
   | "hint_applied"
   | "hint_level_viewed"
   | "hint_opened"
+  | "leaderboard_join_started"
+  | "leaderboard_submit_failed"
+  | "leaderboard_submitted"
+  | "leaderboard_viewed"
   | "puzzle_completed"
   | "result_copied"
   | "result_shared"
@@ -49,6 +53,10 @@ export const sudokuAnalytics = {
   hintApplied: (params?: AnalyticsEventParams) => trackEvent("hint_applied", params),
   hintLevelViewed: (params?: AnalyticsEventParams) => trackEvent("hint_level_viewed", params),
   hintOpened: (params?: AnalyticsEventParams) => trackEvent("hint_opened", params),
+  leaderboardJoinStarted: (params?: AnalyticsEventParams) => trackEvent("leaderboard_join_started", params),
+  leaderboardSubmitFailed: (params?: AnalyticsEventParams) => trackEvent("leaderboard_submit_failed", params),
+  leaderboardSubmitted: (params?: AnalyticsEventParams) => trackEvent("leaderboard_submitted", params),
+  leaderboardViewed: (params?: AnalyticsEventParams) => trackEvent("leaderboard_viewed", params),
   completed: (params?: AnalyticsEventParams) => trackEvent("sudoku_completed", params),
   hintUsed: (params?: AnalyticsEventParams) => trackEvent("sudoku_hint_used", params),
   puzzleCompleted: (params?: AnalyticsEventParams) => trackEvent("puzzle_completed", params),

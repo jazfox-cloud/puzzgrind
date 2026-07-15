@@ -6,6 +6,8 @@ export type RateLimitBinding = {
 
 export const RATE_LIMIT_POLICIES = {
   hint: { binding: "RATE_LIMIT_HINT", limit: 12, period: 60 },
+  leaderboardQuery: { binding: "RATE_LIMIT_SHARE_IMAGE", limit: 120, period: 60 },
+  leaderboardSubmit: { binding: "RATE_LIMIT_SHARE", limit: 10, period: 60 },
   sessionComplete: { binding: "RATE_LIMIT_COMPLETE", limit: 6, period: 60 },
   sessionSave: { binding: "RATE_LIMIT_SAVE", limit: 60, period: 60 },
   sessionStart: { binding: "RATE_LIMIT_START", limit: 12, period: 60 },

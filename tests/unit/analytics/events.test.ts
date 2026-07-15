@@ -15,6 +15,8 @@ describe("analytics event API", () => {
   it("does not send page views or events while Analytics is disabled", () => {
     expect(trackPageView("https://puzzgrind.com/sudoku")).toBe(false);
     expect(trackEvent("sudoku_game_started")).toBe(false);
+    expect(sudokuAnalytics.leaderboardViewed()).toBe(false);
+    expect(sudokuAnalytics.leaderboardSubmitted({ rank: 1 })).toBe(false);
     expect(sendGAEvent).not.toHaveBeenCalled();
   });
 
@@ -35,6 +37,10 @@ describe("analytics event API", () => {
     sudokuAnalytics.resultShared();
     sudokuAnalytics.resultCopied();
     sudokuAnalytics.completionFeedback({ rating: "just_right" });
+    sudokuAnalytics.leaderboardViewed();
+    sudokuAnalytics.leaderboardJoinStarted();
+    sudokuAnalytics.leaderboardSubmitted({ rank: 3 });
+    sudokuAnalytics.leaderboardSubmitFailed({ reason: "request_failed" });
 
     expect(sendGAEvent.mock.calls.map((call) => call[1])).toEqual([
       "hint_opened",
@@ -44,6 +50,10 @@ describe("analytics event API", () => {
       "result_shared",
       "result_copied",
       "completion_feedback",
+      "leaderboard_viewed",
+      "leaderboard_join_started",
+      "leaderboard_submitted",
+      "leaderboard_submit_failed",
     ]);
   });
 

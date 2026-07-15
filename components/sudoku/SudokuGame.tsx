@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CompletionDialog } from "@/components/sudoku/CompletionDialog";
+import { DailyLeaderboard, LeaderboardJoin } from "@/components/sudoku/DailyLeaderboard";
 import { sudokuAnalytics } from "@/lib/analytics/events";
 import { findConflicts, isCompleteValidBoard, parseBoard } from "@/lib/sudoku";
 import {
@@ -18,6 +19,12 @@ import {
 import type { CompletionFeedback, LocalSudokuStats } from "@/lib/sudoku/engagement";
 import { explainStep, hintHighlightCells } from "@/lib/sudoku/hints";
 import type { SudokuHint } from "@/lib/sudoku/hints";
+import {
+  DEFAULT_LEADERBOARD_NAME,
+  loadLeaderboardDisplayName,
+  saveLeaderboardDisplayName,
+} from "@/lib/sudoku/leaderboard";
+import type { LeaderboardSnapshot } from "@/lib/sudoku/leaderboard";
 import {
   clearSavedGame,
   getOrCreateAnonymousId,
@@ -91,10 +98,20 @@ export function SudokuGame() {
   const [feedback, setFeedback] = useState<CompletionFeedback | null>(null);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [secondsToNext, setSecondsToNext] = useState(0);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardSnapshot | null>(null);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
+  const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
+  const [leaderboardAttempt, setLeaderboardAttempt] = useState(0);
+  const [joinStarted, setJoinStarted] = useState(false);
+  const [joiningLeaderboard, setJoiningLeaderboard] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState(DEFAULT_LEADERBOARD_NAME);
   const progressRef = useRef({ values, notes, seconds, mistakes, paused });
   const completionStartedRef = useRef(false);
   const acceptedPuzzleRef = useRef<string | null>(null);
   const restoredLocalRef = useRef(false);
+  const leaderboardViewedRef = useRef<string | null>(null);
 
   const acceptVerifiedResult = useCallback((result: GameResult, daily: DailyPuzzle) => {
     setServerResult(result);
@@ -138,6 +155,7 @@ export function SudokuGame() {
         if (!active) return;
         const saved = loadSavedGame(localStorage, daily.puzzleId, daily.givens);
         const stats = loadLocalSudokuStats(localStorage);
+        setDisplayName(loadLeaderboardDisplayName(localStorage));
         restoredLocalRef.current = Boolean(saved);
         setPuzzle(daily);
         setLocalStats(stats);
@@ -266,6 +284,36 @@ export function SudokuGame() {
     const timer = window.setInterval(update, 1000);
     return () => window.clearInterval(timer);
   }, [puzzle]);
+
+  useEffect(() => {
+    if (!puzzle) return;
+    const puzzleId = puzzle.puzzleId;
+    let active = true;
+    async function loadLeaderboard() {
+      setLeaderboardLoading(true);
+      setLeaderboardError(null);
+      try {
+        const response = await fetch(`/api/sudoku/leaderboard?limit=${leaderboardExpanded ? "20" : "10"}`, {
+          headers: sessionToken ? { authorization: `Bearer ${sessionToken}` } : undefined,
+        });
+        const payload = await response.json() as LeaderboardSnapshot & { error?: string };
+        if (!response.ok || payload.error) throw new Error("Today’s leaderboard is unavailable right now.");
+        if (!active) return;
+        setLeaderboard(payload);
+        if (payload.ownRank !== null) setJoinStarted(true);
+        if (leaderboardViewedRef.current !== puzzleId) {
+          leaderboardViewedRef.current = puzzleId;
+          sudokuAnalytics.leaderboardViewed();
+        }
+      } catch (cause) {
+        if (active) setLeaderboardError(cause instanceof Error ? cause.message : "Unable to load today’s leaderboard.");
+      } finally {
+        if (active) setLeaderboardLoading(false);
+      }
+    }
+    void loadLeaderboard();
+    return () => { active = false; };
+  }, [leaderboardAttempt, leaderboardExpanded, puzzle, sessionToken]);
 
   useEffect(() => {
     if (!puzzle || paused || complete) return;
@@ -509,6 +557,44 @@ export function SudokuGame() {
     if (firstSelection) sudokuAnalytics.completionFeedback({ rating: choice });
   }, [feedback, localStats, puzzle]);
 
+  const startLeaderboardJoin = useCallback(() => {
+    setJoinStarted(true);
+    setJoinError(null);
+    sudokuAnalytics.leaderboardJoinStarted();
+  }, []);
+
+  const submitLeaderboard = useCallback(async () => {
+    if (!sessionToken || !serverResult) return;
+    setJoiningLeaderboard(true);
+    setJoinError(null);
+    try {
+      const response = await fetch("/api/sudoku/leaderboard", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ displayName, token: sessionToken }),
+      });
+      const payload = await response.json() as LeaderboardSnapshot & { error?: string };
+      if (!response.ok || payload.error) {
+        const messages: Record<string, string> = {
+          inappropriate_display_name: "Please choose a different public nickname.",
+          invalid_display_name: "Use 2–16 letters, numbers, spaces, underscores, or hyphens.",
+          leaderboard_already_joined: "This browser has already joined today’s leaderboard.",
+          completion_not_eligible: "This completion is not eligible for the public leaderboard.",
+          leaderboard_closed: "Today’s leaderboard has closed. Come back for the new puzzle.",
+        };
+        throw new Error(messages[payload.error ?? ""] ?? "Your score could not be submitted. Try again.");
+      }
+      setLeaderboard(payload);
+      saveLeaderboardDisplayName(localStorage, displayName);
+      sudokuAnalytics.leaderboardSubmitted({ rank: payload.ownRank ?? undefined });
+    } catch (cause) {
+      setJoinError(cause instanceof Error ? cause.message : "Your score could not be submitted.");
+      sudokuAnalytics.leaderboardSubmitFailed({ reason: "request_failed" });
+    } finally {
+      setJoiningLeaderboard(false);
+    }
+  }, [displayName, serverResult, sessionToken]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (serverResult) return;
@@ -533,6 +619,18 @@ export function SudokuGame() {
     <div>
       {serverResult && completionOpen && <CompletionDialog
         feedback={feedback}
+        leaderboardSlot={<LeaderboardJoin
+          displayName={displayName}
+          error={joinError}
+          joined={leaderboard?.ownRank !== null && leaderboard?.ownRank !== undefined}
+          joining={joiningLeaderboard}
+          onChange={setDisplayName}
+          onStart={startLeaderboardJoin}
+          onSubmit={() => void submitLeaderboard()}
+          ownRank={leaderboard?.ownRank ?? null}
+          sessionReady={Boolean(sessionToken)}
+          started={joinStarted}
+        />}
         onClose={() => setCompletionOpen(false)}
         onCopy={() => void copyResult()}
         onFeedback={chooseFeedback}
@@ -606,6 +704,14 @@ export function SudokuGame() {
         <p className="text-sm leading-6 text-[var(--ink-soft)]">Keyboard: 1–9 to enter, N for notes, Delete to erase, Ctrl/⌘+Z to undo.</p>
       </aside>
       </div>
+      <DailyLeaderboard
+        error={leaderboardError}
+        expanded={leaderboardExpanded}
+        loading={leaderboardLoading}
+        onExpand={() => setLeaderboardExpanded(true)}
+        onRetry={() => setLeaderboardAttempt((attempt) => attempt + 1)}
+        snapshot={leaderboard}
+      />
     </div>
   );
 }
