@@ -4,6 +4,10 @@ import { NextResponse } from "next/server";
 // oversized bodies from being buffered and parsed by the Worker.
 export const JSON_BODY_LIMITS = {
   hint: 1_024,
+  lexiGuess: 1_024,
+  lexiHint: 768,
+  lexiLeaderboardSubmit: 768,
+  lexiSessionStart: 256,
   leaderboardSubmit: 512,
   sessionComplete: 8_192,
   sessionSave: 8_192,

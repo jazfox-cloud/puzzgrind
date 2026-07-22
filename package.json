@@ -27,6 +27,7 @@
     "d1:migrate:production": "wrangler d1 migrations apply puzzgrind-db --remote --env production",
     "sudoku:seed-sql": "node scripts/generate-sudoku-seed.mjs",
     "lexi:prepare-wordlists": "node scripts/prepare-lexi-wordlists.mjs",
+    "lexi:generate-server-lexicon": "node scripts/generate-lexi-server-lexicon.mjs",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {

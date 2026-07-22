@@ -8,6 +8,11 @@ declare global {
     DB: D1DatabaseLike;
     RATE_LIMIT_COMPLETE?: RateLimitBinding;
     RATE_LIMIT_HINT?: RateLimitBinding;
+    RATE_LIMIT_LEXI_GUESS?: RateLimitBinding;
+    RATE_LIMIT_LEXI_HINT?: RateLimitBinding;
+    RATE_LIMIT_LEXI_READ?: RateLimitBinding;
+    RATE_LIMIT_LEXI_START?: RateLimitBinding;
+    RATE_LIMIT_LEXI_SUBMIT?: RateLimitBinding;
     RATE_LIMIT_SAVE?: RateLimitBinding;
     RATE_LIMIT_SHARE?: RateLimitBinding;
     RATE_LIMIT_SHARE_IMAGE?: RateLimitBinding;

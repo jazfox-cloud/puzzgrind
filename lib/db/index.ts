@@ -1,5 +1,10 @@
 export type { D1DatabaseLike, D1PreparedStatementLike } from "./d1";
 export { DatabaseError } from "./errors";
+export { LexiHintRepository } from "./lexi-hint-repository";
+export { LexiLeaderboardRepository } from "./lexi-leaderboard-repository";
+export { LexiPuzzleRepository } from "./lexi-puzzle-repository";
+export { LexiSessionRepository } from "./lexi-session-repository";
+export { LexiStatsRepository } from "./lexi-stats-repository";
 export { SudokuHintEventRepository } from "./sudoku-hint-event-repository";
 export { SudokuLeaderboardRepository } from "./sudoku-leaderboard-repository";
 export { SudokuPuzzleRepository } from "./sudoku-puzzle-repository";
@@ -18,3 +23,12 @@ export type {
   SudokuPuzzleStats,
   SudokuSession,
 } from "./sudoku-types";
+export type {
+  LexiLeaderboardEntry,
+  LexiPuzzle,
+  LexiPuzzleStats,
+  LexiPuzzleStatus,
+  LexiSession,
+  LexiSessionStatus,
+  RankedLexiLeaderboardEntry,
+} from "./lexi-types";

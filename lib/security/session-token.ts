@@ -29,6 +29,7 @@ export async function verifySessionTokenDetailed(token: string, secret: string, 
     if (!constantTimeEqual(actual, expected)) return { ok: false, reason: "invalid" };
     const payload = JSON.parse(decodeUtf8(decodeBase64Url(encoded))) as SessionTokenPayload;
     if (
+      "scope" in payload ||
       typeof payload.sessionId !== "string" || !payload.sessionId ||
       typeof payload.puzzleId !== "string" || !payload.puzzleId ||
       typeof payload.anonymousId !== "string" || !payload.anonymousId ||
