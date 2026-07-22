@@ -141,7 +141,7 @@ export function validateArtifact({ environment, expectedGitSha, root = process.c
     if (home.includes("noindex") || privacy.includes("noindex")) fail(paths["index.cache"], "Production page contains noindex");
     for (const rule of ["Allow: /", "Disallow: /api/", "Disallow: /sudoku/share/", "Sitemap: https://puzzgrind.com/sitemap.xml"]) if (!robots.includes(rule)) fail(paths["robots.txt.cache"], `missing ${rule}`);
     if (/^Disallow: \/$/m.test(robots)) fail(paths["robots.txt.cache"], "Production robots blocks the entire site");
-    for (const url of ["https://puzzgrind.com/", "https://puzzgrind.com/sudoku", "https://puzzgrind.com/privacy"]) if (!sitemap.includes(`<loc>${url}</loc>`)) fail(paths["sitemap.xml.cache"], `missing ${url}`);
+    for (const url of ["https://puzzgrind.com/", "https://puzzgrind.com/sudoku", "https://puzzgrind.com/games/lexi-daily", "https://puzzgrind.com/privacy"]) if (!sitemap.includes(`<loc>${url}</loc>`)) fail(paths["sitemap.xml.cache"], `missing ${url}`);
   } else {
     if (home.includes('rel="canonical"') || privacy.includes('rel="canonical"')) fail(paths["index.cache"], `${environment} contains canonical`);
     if (home.includes('property="og:url"') || privacy.includes('property="og:url"')) fail(paths["index.cache"], `${environment} contains og:url`);

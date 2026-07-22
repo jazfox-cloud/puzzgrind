@@ -34,8 +34,8 @@ export default function PrivacyPage() {
           <p className="mt-2">
             If accepted, Google Analytics may process information such as pages viewed, approximate
             location derived from network information, device and browser details, referring pages,
-            and interaction timing. PuzzGrind does not send your Sudoku board or saved game data as
-            analytics events in this foundation.
+            and interaction timing. PuzzGrind does not send puzzle answers, Lexi guesses, Sudoku
+            boards, hint letters, session tokens, nicknames, or locally saved state as analytics events.
           </p>
         </section>
 
@@ -55,14 +55,20 @@ export default function PrivacyPage() {
           <p className="mt-2">
             Your choice is stored only in this browser using first-party local storage. It contains
             no identity information, is not sent to PuzzGrind servers, and is separate from locally
-            saved Sudoku progress.
+            saved game progress.
           </p>
         </section>
       </div>
 
+      <section className="mt-8 leading-7">
+        <h2 className="text-xl font-black">Local game data</h2>
+        <p className="mt-2">This browser stores an anonymous identifier, game progress, an optional leaderboard nickname, local streaks, and your analytics choice. This supports recovery without an account and is not cross-device storage.</p>
+      </section>
+
       <Link className="mt-12 inline-flex rounded-full bg-emerald-950 px-5 py-3 font-bold text-white" href="/sudoku">
         Play Daily Sudoku
       </Link>
+      <Link className="ml-3 mt-3 inline-flex rounded-full bg-blue-950 px-5 py-3 font-bold text-white" href="/games/lexi-daily">Play Lexi Daily</Link>
       <SiteFooter className="mt-12" />
     </main>
   );

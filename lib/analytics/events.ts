@@ -18,7 +18,15 @@ export type AnalyticsEventName =
   | "sudoku_completed"
   | "sudoku_hint_used"
   | "sudoku_resume"
-  | "sudoku_share";
+  | "sudoku_share"
+  | "home_game_select"
+  | "lexi_game_start"
+  | "lexi_guess_submit"
+  | "lexi_hint_use"
+  | "lexi_game_complete"
+  | "lexi_game_fail"
+  | "lexi_share"
+  | "lexi_leaderboard_view";
 
 export type AnalyticsEventParams = Record<string, boolean | number | string | undefined>;
 
@@ -65,3 +73,19 @@ export const sudokuAnalytics = {
   resultShared: (params?: AnalyticsEventParams) => trackEvent("result_shared", params),
   share: (params?: AnalyticsEventParams) => trackEvent("sudoku_share", params),
 } as const;
+
+// The Lexi helpers intentionally expose only aggregate, non-content fields.
+export const lexiAnalytics = {
+  gameStart: () => trackEvent("lexi_game_start"),
+  guessSubmit: (attempt: number) => trackEvent("lexi_guess_submit", { attempt }),
+  hintUse: (attempt: number) => trackEvent("lexi_hint_use", { attempt }),
+  gameComplete: (attempts: number, hints: number, durationSeconds: number) =>
+    trackEvent("lexi_game_complete", { attempts, hints, duration_seconds: durationSeconds }),
+  gameFail: (hints: number) => trackEvent("lexi_game_fail", { hints }),
+  share: (method: "clipboard" | "web_share") => trackEvent("lexi_share", { method }),
+  leaderboardView: (limit: 10 | 20) => trackEvent("lexi_leaderboard_view", { limit }),
+} as const;
+
+export function trackHomeGameSelect(gameId: "lexi_daily" | "sudoku") {
+  return trackEvent("home_game_select", { game_id: gameId });
+}

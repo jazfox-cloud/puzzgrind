@@ -3,6 +3,7 @@ import Link from "next/link";
 const footerLinks = [
   { href: "/", label: "Home" },
   { href: "/sudoku", label: "Daily Sudoku" },
+  { href: "/games/lexi-daily", label: "Lexi Daily" },
   { href: "/privacy", label: "Privacy" },
 ] as const;
 

@@ -4,15 +4,16 @@ test("shows the PuzzGrind launch page", async ({ page }) => {
   const response = await page.goto("/");
   expect(response?.status()).toBe(200);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Play smarter");
-  await expect(page).toHaveTitle("Daily Sudoku with Explainable Hints | PuzzGrind");
-  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /hints that explain/i);
-  await expect(page.getByText("Daily Sudoku with explainable hints", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Play Today's Sudoku" })).toBeVisible();
+  await expect(page).toHaveTitle("Daily Logic and Word Puzzles | PuzzGrind");
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /Lexi Daily/i);
+  await expect(page.getByText("Daily logic and word puzzles", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Play Daily Sudoku" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Play Lexi Daily" })).toBeVisible();
   await expect(page.getByText("Hints that teach", { exact: true })).toBeVisible();
   await expect(page.getByText("Learn the move, not just the answer.")).toBeVisible();
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://puzzgrind.com/");
   await expect(page.locator('meta[property="og:url"]')).toHaveAttribute("content", "https://puzzgrind.com/");
-  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", "Daily Sudoku with Explainable Hints | PuzzGrind");
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", "Daily Logic and Word Puzzles | PuzzGrind");
   await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute("content", "summary_large_image");
   await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
   expect(await page.locator('script[type="application/ld+json"]').textContent()).toContain('"@type":"WebSite"');
@@ -298,7 +299,7 @@ test("keeps the launch page and game within a mobile viewport", async ({ page })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-test("serves Production robots and the three-URL sitemap", async ({ request }) => {
+test("serves Production robots and the four-URL sitemap", async ({ request }) => {
   const robots = await request.get("/robots.txt");
   expect(robots.status()).toBe(200);
   const robotsText = await robots.text();
@@ -310,9 +311,10 @@ test("serves Production robots and the three-URL sitemap", async ({ request }) =
   const sitemap = await request.get("/sitemap.xml");
   expect(sitemap.status()).toBe(200);
   const sitemapText = await sitemap.text();
-  expect(sitemapText.match(/<loc>/g)).toHaveLength(3);
+  expect(sitemapText.match(/<loc>/g)).toHaveLength(4);
   expect(sitemapText).toContain("<loc>https://puzzgrind.com/</loc>");
   expect(sitemapText).toContain("<loc>https://puzzgrind.com/sudoku</loc>");
+  expect(sitemapText).toContain("<loc>https://puzzgrind.com/games/lexi-daily</loc>");
   expect(sitemapText).toContain("<loc>https://puzzgrind.com/privacy</loc>");
   expect(sitemapText).not.toContain("/api/");
   expect(sitemapText).not.toContain("/share/");

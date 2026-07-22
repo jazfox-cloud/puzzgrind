@@ -4,7 +4,7 @@ const { sendGAEvent } = vi.hoisted(() => ({ sendGAEvent: vi.fn() }));
 
 vi.mock("@next/third-parties/google", () => ({ sendGAEvent }));
 
-import { sudokuAnalytics, trackEvent, trackPageView } from "@/lib/analytics/events";
+import { lexiAnalytics, sudokuAnalytics, trackEvent, trackHomeGameSelect, trackPageView } from "@/lib/analytics/events";
 
 describe("analytics event API", () => {
   beforeEach(() => {
@@ -61,5 +61,22 @@ describe("analytics event API", () => {
     window.__puzzgrindAnalyticsEnabled = true;
     sendGAEvent.mockImplementation(() => { throw new Error("GA unavailable"); });
     expect(sudokuAnalytics.hintOpened()).toBe(false);
+  });
+
+  it("sends only aggregate Lexi fields", () => {
+    window.__puzzgrindAnalyticsEnabled = true;
+    lexiAnalytics.guessSubmit(2);
+    lexiAnalytics.hintUse(2);
+    lexiAnalytics.gameComplete(3, 1, 42);
+    lexiAnalytics.share("clipboard");
+    trackHomeGameSelect("lexi_daily");
+    expect(sendGAEvent.mock.calls).toEqual([
+      ["event", "lexi_guess_submit", { attempt: 2 }],
+      ["event", "lexi_hint_use", { attempt: 2 }],
+      ["event", "lexi_game_complete", { attempts: 3, hints: 1, duration_seconds: 42 }],
+      ["event", "lexi_share", { method: "clipboard" }],
+      ["event", "home_game_select", { game_id: "lexi_daily" }],
+    ]);
+    expect(JSON.stringify(sendGAEvent.mock.calls.map((call) => call[2]))).not.toMatch(/token|answer|guess|nickname|session_id|anonymous/i);
   });
 });

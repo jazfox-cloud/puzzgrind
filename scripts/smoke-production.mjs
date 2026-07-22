@@ -78,7 +78,7 @@ if (/^Disallow: \/$/m.test(robots.body)) fail("/robots.txt", "blocks the entire 
 const sitemap = await read("/sitemap.xml");
 if (sitemap.response.status !== 200) fail("/sitemap.xml", `returned ${sitemap.response.status}`);
 assertDeploymentSafeCache(sitemap.response, "/sitemap.xml");
-for (const url of [`${ORIGIN}/`, `${ORIGIN}/sudoku`, `${ORIGIN}/privacy`]) {
+for (const url of [`${ORIGIN}/`, `${ORIGIN}/sudoku`, `${ORIGIN}/games/lexi-daily`, `${ORIGIN}/privacy`]) {
   if (!sitemap.body.includes(`<loc>${url}</loc>`)) fail("/sitemap.xml", `is missing ${url}`);
 }
 
@@ -90,7 +90,7 @@ if (asset.response.status !== 200 || !assetCache.includes("max-age=31536000") ||
   fail(assetPath, `is not immutable (${asset.response.status}, ${JSON.stringify(assetCache)})`);
 }
 
-for (const [path, expected] of [["/sudoku", 200], ["/api/health", 200], ["/api/health/db", 200]]) {
+for (const [path, expected] of [["/sudoku", 200], ["/games/lexi-daily", 200], ["/api/health", 200], ["/api/health/db", 200]]) {
   const { response } = await read(path);
   if (response.status !== expected) fail(path, `returned ${response.status}`);
   console.log(`Production smoke: ${path} -> ${response.status}`);

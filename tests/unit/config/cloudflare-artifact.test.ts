@@ -36,7 +36,7 @@ function fixture(environment: "production" | "preview" | "staging") {
   const home = production ? '<link href="https://puzzgrind.com/" rel="canonical"/><meta content="https://puzzgrind.com/" property="og:url"/>' : '<meta name="robots" content="noindex,nofollow"/>';
   const privacy = production ? '<link rel="canonical" href="https://puzzgrind.com/privacy"/>' : '<meta name="robots" content="noindex,nofollow"/>';
   const robots = production ? "User-Agent: *\nAllow: /\nDisallow: /api/\nDisallow: /sudoku/share/\nSitemap: https://puzzgrind.com/sitemap.xml\n" : "User-Agent: *\nDisallow: /\n";
-  const sitemap = '<urlset><url><loc>https://puzzgrind.com/</loc></url><url><loc>https://puzzgrind.com/sudoku</loc></url><url><loc>https://puzzgrind.com/privacy</loc></url></urlset>';
+  const sitemap = '<urlset><url><loc>https://puzzgrind.com/</loc></url><url><loc>https://puzzgrind.com/sudoku</loc></url><url><loc>https://puzzgrind.com/games/lexi-daily</loc></url><url><loc>https://puzzgrind.com/privacy</loc></url></urlset>';
   for (const [name, value] of [["index.cache", { html: home }], ["privacy.cache", { html: privacy }], ["robots.txt.cache", { body: robots }], ["sitemap.xml.cache", { body: sitemap }]] as const) writeFileSync(join(root, ".open-next", "cache", id, name), JSON.stringify(value));
   finalizeArtifact({ environment, gitSha: SHA, root });
   return root;

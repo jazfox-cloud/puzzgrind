@@ -12,6 +12,8 @@ import {
   createPageMetadata,
   createRootMetadata,
   HOME_SEO,
+  LEXI_JSON_LD,
+  LEXI_SEO,
   NOINDEX_ROBOTS,
   PRIVACY_SEO,
   serializeJsonLd,
@@ -33,6 +35,7 @@ describe("SEO foundation", () => {
     const home = createPageMetadata(HOME_SEO, "production");
     const sudoku = createPageMetadata(SUDOKU_SEO, "production");
     const privacy = createPageMetadata(PRIVACY_SEO, "production");
+    const lexi = createPageMetadata(LEXI_SEO, "production");
     expect(root.metadataBase?.toString()).toBe("https://puzzgrind.com/");
     expect(root.robots).toBeUndefined();
     expect(root.alternates).toBeUndefined();
@@ -41,6 +44,7 @@ describe("SEO foundation", () => {
     expect(sudoku.alternates?.canonical).toBe("https://puzzgrind.com/sudoku");
     expect(sudoku.openGraph?.url).toBe("https://puzzgrind.com/sudoku");
     expect(privacy.alternates?.canonical).toBe("https://puzzgrind.com/privacy");
+    expect(lexi.alternates?.canonical).toBe("https://puzzgrind.com/games/lexi-daily");
     expect(home.twitter).toMatchObject({ card: "summary_large_image" });
   });
 
@@ -61,10 +65,11 @@ describe("SEO foundation", () => {
     expect(createRobots("staging")).toEqual({ rules: { userAgent: "*", disallow: "/" } });
   });
 
-  it("limits the sitemap to the three public Production URLs", () => {
+  it("limits the sitemap to the four public Production URLs", () => {
     expect(sitemap().map(({ url }) => url)).toEqual([
       "https://puzzgrind.com/",
       "https://puzzgrind.com/sudoku",
+      "https://puzzgrind.com/games/lexi-daily",
       "https://puzzgrind.com/privacy",
     ]);
   });
@@ -77,6 +82,7 @@ describe("SEO foundation", () => {
       applicationCategory: "GameApplication",
       operatingSystem: "Web",
     });
+    expect(LEXI_JSON_LD).toMatchObject({ "@type": "WebApplication", applicationCategory: "GameApplication" });
     expect(serializeJsonLd({ value: "</script>" })).not.toContain("<");
     expect(renderToStaticMarkup(createElement(JsonLd, { data: WEBSITE_JSON_LD }))).toContain("application/ld+json");
   });
@@ -99,5 +105,6 @@ describe("SEO foundation", () => {
     const notFoundHtml = renderToStaticMarkup(createElement(NotFound));
     expect(notFoundHtml).toContain("This square is empty");
     expect(notFoundHtml).toContain('href="/sudoku"');
+    expect(notFoundHtml).toContain('href="/games/lexi-daily"');
   });
 });

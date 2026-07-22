@@ -23,6 +23,8 @@
     "deploy": "node scripts/deploy-cloudflare-production.mjs",
     "deploy:staging": "node scripts/build-cloudflare-artifact.mjs staging && opennextjs-cloudflare deploy --env staging",
     "d1:migrate:local": "wrangler d1 migrations apply puzzgrind-staging-db --local --env staging",
+    "d1:lexi:seed:local": "node scripts/seed-lexi-development.mjs",
+    "d1:lexi:setup:local": "pnpm d1:migrate:local && pnpm d1:lexi:seed:local",
     "d1:migrate:staging": "wrangler d1 migrations apply puzzgrind-staging-db --remote --env staging",
     "d1:migrate:production": "wrangler d1 migrations apply puzzgrind-db --remote --env production",
     "sudoku:seed-sql": "node scripts/generate-sudoku-seed.mjs",

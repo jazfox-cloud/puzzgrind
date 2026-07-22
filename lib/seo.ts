@@ -6,9 +6,15 @@ import { SITE, siteUrl } from "@/lib/site";
 export type { AppEnvironment } from "@/lib/build-environment";
 
 export const HOME_SEO = {
-  title: "Daily Sudoku with Explainable Hints",
-  description: "Play one shared Sudoku every day with hints that explain the next logical step instead of revealing the answer.",
+  title: "Daily Logic and Word Puzzles",
+  description: "Play PuzzGrind's shared Daily Sudoku and Lexi Daily word puzzle, with saved progress and no account required.",
   path: "/",
+} as const;
+
+export const LEXI_SEO = {
+  title: "Lexi Daily — Five-Letter Word Puzzle",
+  description: "Deduce today's shared five-letter word in six guesses with repeated-letter feedback, one optional hint, and an anonymous daily leaderboard.",
+  path: "/games/lexi-daily",
 } as const;
 
 export const SUDOKU_SEO = {
@@ -43,6 +49,12 @@ export const SUDOKU_JSON_LD = {
   operatingSystem: "Web",
 } as const;
 
+export const LEXI_JSON_LD = {
+  "@context": "https://schema.org", "@type": "WebApplication", name: "PuzzGrind Lexi Daily",
+  url: siteUrl(LEXI_SEO.path), description: LEXI_SEO.description,
+  applicationCategory: "GameApplication", operatingSystem: "Web",
+} as const;
+
 export function isIndexableEnvironment(environment: AppEnvironment) {
   return environment === "production";
 }
@@ -67,7 +79,7 @@ export function createRootMetadata(environment: AppEnvironment): Metadata {
       title: SITE.defaultTitle,
       description: SITE.defaultDescription,
       url: undefined,
-      images: [{ url: siteUrl(SITE.socialImagePath), width: 1200, height: 630, alt: "PuzzGrind Daily Sudoku" }],
+      images: [{ url: siteUrl(SITE.socialImagePath), width: 1200, height: 630, alt: "PuzzGrind daily puzzles" }],
     },
     twitter: {
       card: SITE.twitterCard,
@@ -103,7 +115,7 @@ export function createPageMetadata(
       title: `${page.title} | ${SITE.name}`,
       description: page.description,
       url: indexable && page.path !== "/" ? canonical : undefined,
-      images: [{ url: socialImage, width: 1200, height: 630, alt: "PuzzGrind Daily Sudoku" }],
+      images: [{ url: socialImage, width: 1200, height: 630, alt: "PuzzGrind daily puzzles" }],
     },
     twitter: {
       card: SITE.twitterCard,
