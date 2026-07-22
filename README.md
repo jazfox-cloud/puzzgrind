@@ -1,6 +1,7 @@
 # PuzzGrind
 
-PuzzGrind is a puzzle platform beginning with an explainable Daily Sudoku. Phase 0 is intentionally a single-game validation project.
+PuzzGrind is an English-language Daily Puzzle Platform. Phase 0 delivered Explainable Daily Sudoku;
+the approved Phase 1 adds Lexi Daily while preserving the Sudoku production baseline.
 
 ## Local development
 
@@ -100,4 +101,7 @@ JSON request limits are 256 bytes for session start, 512 bytes for share-token c
 
 ## Scope
 
-Read [the Phase 0 constraints](docs/puzzgrind-phase-0-sudoku-spec.md) and the active task file before making changes. Do not advance to a later task without explicit approval.
+Read the historical [Phase 0 Sudoku constraints](docs/puzzgrind-phase-0-sudoku-spec.md), the active
+[Phase 1 Lexi Daily specification](docs/puzzgrind-phase-1-lexi-daily-spec.md), and the approved task
+file before making changes. Third-party word-list attribution is recorded in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

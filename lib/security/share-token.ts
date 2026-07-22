@@ -7,22 +7,8 @@ export type ShareTokenPayload = {
   puzzleDate: string;
 };
 
-const encoder = new TextEncoder();
-
-function base64Url(bytes: Uint8Array): string {
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/u, "");
-}
-
-function decodeBase64Url(value: string): Uint8Array {
-  const base64 = value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
-  return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-}
-
 async function signature(value: string, secret: string): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  return new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(`puzzgrind-share-v1.${value}`)));
+  return hmacSha256(`puzzgrind-share-v1.${value}`, secret);
 }
 
 function validPayload(payload: ShareTokenPayload): boolean {
@@ -36,8 +22,8 @@ function validPayload(payload: ShareTokenPayload): boolean {
 
 export async function createShareToken(payload: ShareTokenPayload, secret: string): Promise<string> {
   if (!validPayload(payload)) throw new Error("Invalid share payload");
-  const encoded = base64Url(encoder.encode(JSON.stringify(payload)));
-  return `${encoded}.${base64Url(await signature(encoded, secret))}`;
+  const encoded = encodeBase64Url(encodeUtf8(JSON.stringify(payload)));
+  return `${encoded}.${encodeBase64Url(await signature(encoded, secret))}`;
 }
 
 export async function verifyShareToken(token: string, secret: string): Promise<ShareTokenPayload | null> {
@@ -46,13 +32,18 @@ export async function verifyShareToken(token: string, secret: string): Promise<S
     if (!encoded || !supplied || extra) return null;
     const expected = await signature(encoded, secret);
     const actual = decodeBase64Url(supplied);
-    if (actual.length !== expected.length) return null;
-    let difference = 0;
-    for (let index = 0; index < actual.length; index += 1) difference |= actual[index] ^ expected[index];
-    if (difference !== 0) return null;
-    const payload = JSON.parse(new TextDecoder().decode(decodeBase64Url(encoded))) as ShareTokenPayload;
+    if (!constantTimeEqual(actual, expected)) return null;
+    const payload = JSON.parse(decodeUtf8(decodeBase64Url(encoded))) as ShareTokenPayload;
     return validPayload(payload) ? payload : null;
   } catch {
     return null;
   }
 }
+import {
+  constantTimeEqual,
+  decodeBase64Url,
+  decodeUtf8,
+  encodeBase64Url,
+  encodeUtf8,
+  hmacSha256,
+} from "@/lib/security/hmac";

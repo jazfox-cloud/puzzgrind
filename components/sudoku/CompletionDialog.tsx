@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { formatCountdown } from "@/lib/format/time";
 import { formatResultTime } from "@/lib/sudoku/engagement";
 import type { CompletionFeedback, LocalSudokuStats } from "@/lib/sudoku/engagement";
 
@@ -22,12 +23,6 @@ type Props = {
   shareStatus: string | null;
   stats: LocalSudokuStats;
 };
-
-function countdown(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-}
 
 const feedbackOptions = [
   ["too_easy", "Too easy"],
@@ -66,7 +61,7 @@ export function CompletionDialog({
 
         <div className="mt-6 rounded-2xl bg-emerald-950 p-5 text-white">
           <p className="text-xs font-black uppercase tracking-[0.15em] text-[var(--accent)]">Tomorrow&apos;s puzzle arrives in:</p>
-          <p className="mt-2 font-mono text-3xl font-black" data-testid="tomorrow-countdown">{countdown(secondsToNext)}</p>
+          <p className="mt-2 font-mono text-3xl font-black" data-testid="tomorrow-countdown">{formatCountdown(secondsToNext)}</p>
         </div>
 
         {leaderboardSlot}

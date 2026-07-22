@@ -1,5 +1,8 @@
 import type { D1DatabaseLike } from "@/lib/db";
+import { nextUtcMidnight } from "@/lib/daily/utc";
 import { parseBoard } from "./board";
+
+export { nextUtcMidnight, utcDate } from "@/lib/daily/utc";
 
 type DailyPuzzleRow = {
   difficulty: string;
@@ -16,16 +19,6 @@ export type PublicDailyPuzzle = {
   puzzleDate: string;
   puzzleId: string;
 };
-
-export function utcDate(now = new Date()): string {
-  return now.toISOString().slice(0, 10);
-}
-
-export function nextUtcMidnight(date: string): string {
-  const midnight = new Date(`${date}T00:00:00.000Z`);
-  midnight.setUTCDate(midnight.getUTCDate() + 1);
-  return midnight.toISOString();
-}
 
 async function readExactPuzzle(db: D1DatabaseLike, date: string): Promise<DailyPuzzleRow | null> {
   return db

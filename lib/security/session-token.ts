@@ -10,28 +10,9 @@ export type SessionTokenVerification =
   | { ok: true; payload: SessionTokenPayload }
   | { ok: false; reason: "expired" | "invalid" };
 
-const encoder = new TextEncoder();
-
-function base64Url(bytes: Uint8Array): string {
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/u, "");
-}
-
-function decodeBase64Url(value: string): Uint8Array {
-  const base64 = value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
-  const binary = atob(base64);
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
-}
-
-async function hmac(value: string, secret: string): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  return new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(value)));
-}
-
 export async function createSessionToken(payload: SessionTokenPayload, secret: string): Promise<string> {
-  const encoded = base64Url(encoder.encode(JSON.stringify(payload)));
-  return `${encoded}.${base64Url(await hmac(encoded, secret))}`;
+  const encoded = encodeBase64Url(encodeUtf8(JSON.stringify(payload)));
+  return `${encoded}.${encodeBase64Url(await hmacSha256(encoded, secret))}`;
 }
 
 export async function verifySessionToken(token: string, secret: string, now: number): Promise<SessionTokenPayload | null> {
@@ -43,13 +24,10 @@ export async function verifySessionTokenDetailed(token: string, secret: string, 
   try {
     const [encoded, signature, extra] = token.split(".");
     if (!encoded || !signature || extra) return { ok: false, reason: "invalid" };
-    const expected = await hmac(encoded, secret);
+    const expected = await hmacSha256(encoded, secret);
     const actual = decodeBase64Url(signature);
-    if (actual.length !== expected.length) return { ok: false, reason: "invalid" };
-    let difference = 0;
-    for (let index = 0; index < actual.length; index += 1) difference |= actual[index] ^ expected[index];
-    if (difference !== 0) return { ok: false, reason: "invalid" };
-    const payload = JSON.parse(new TextDecoder().decode(decodeBase64Url(encoded))) as SessionTokenPayload;
+    if (!constantTimeEqual(actual, expected)) return { ok: false, reason: "invalid" };
+    const payload = JSON.parse(decodeUtf8(decodeBase64Url(encoded))) as SessionTokenPayload;
     if (
       typeof payload.sessionId !== "string" || !payload.sessionId ||
       typeof payload.puzzleId !== "string" || !payload.puzzleId ||
@@ -66,3 +44,11 @@ export async function verifySessionTokenDetailed(token: string, secret: string, 
     return { ok: false, reason: "invalid" };
   }
 }
+import {
+  constantTimeEqual,
+  decodeBase64Url,
+  decodeUtf8,
+  encodeBase64Url,
+  encodeUtf8,
+  hmacSha256,
+} from "@/lib/security/hmac";

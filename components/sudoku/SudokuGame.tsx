@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CompletionDialog } from "@/components/sudoku/CompletionDialog";
 import { DailyLeaderboard, LeaderboardJoin } from "@/components/sudoku/DailyLeaderboard";
 import { sudokuAnalytics } from "@/lib/analytics/events";
+import { formatClockTime } from "@/lib/format/time";
 import { findConflicts, isCompleteValidBoard, parseBoard } from "@/lib/sudoku";
 import {
   buildResultShareText,
@@ -58,10 +59,6 @@ async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}
   } finally {
     window.clearTimeout(timeout);
   }
-}
-
-function formatTime(seconds: number): string {
-  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 function boardFingerprint(values: number[], notes: number[][]): string {
@@ -646,7 +643,7 @@ export function SudokuGame() {
       <section>
         <div className="mb-4 flex items-center justify-between gap-3">
           <div><span className="rounded-full bg-emerald-950 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-white">Medium</span><span className="ml-3 text-sm text-[var(--ink-soft)]">{puzzle.puzzleDate} UTC</span></div>
-          <div className="flex items-center gap-3"><span className="font-mono text-lg font-black">{formatTime(seconds)}</span><button className="rounded-full border border-emerald-950/20 px-4 py-2 font-bold disabled:opacity-40" disabled={Boolean(serverResult)} onClick={() => setPaused((current) => !current)}>{paused ? "Resume" : "Pause"}</button></div>
+          <div className="flex items-center gap-3"><span className="font-mono text-lg font-black">{formatClockTime(seconds)}</span><button className="rounded-full border border-emerald-950/20 px-4 py-2 font-bold disabled:opacity-40" disabled={Boolean(serverResult)} onClick={() => setPaused((current) => !current)}>{paused ? "Resume" : "Pause"}</button></div>
         </div>
         <div className="mb-3 grid grid-cols-3 gap-2 text-center text-xs"><div className="rounded-xl bg-white/70 p-2"><strong className="block text-base">{filledCount}/81</strong>Filled</div><div className="rounded-xl bg-white/70 p-2"><strong className="block text-base">{mistakes}</strong>Mistakes</div><div className="rounded-xl bg-white/70 p-2"><strong className="block text-base">{hintCount}</strong>Hints</div></div>
         <div className="relative grid aspect-square grid-cols-9 overflow-hidden rounded-xl border-2 border-emerald-950 bg-emerald-950" role="grid" aria-label="Daily Sudoku board">
@@ -678,7 +675,7 @@ export function SudokuGame() {
       <aside className="space-y-4">
         {serverResult && <section className="rounded-2xl bg-emerald-950 p-5 text-white">
           <p className="font-black">Today&apos;s puzzle is complete.</p>
-          <p className="mt-1 text-sm text-white/70">Time {formatTime(serverResult.durationSeconds)} · {serverResult.hintCount} hint{serverResult.hintCount === 1 ? "" : "s"}</p>
+          <p className="mt-1 text-sm text-white/70">Time {formatClockTime(serverResult.durationSeconds)} · {serverResult.hintCount} hint{serverResult.hintCount === 1 ? "" : "s"}</p>
           <button className="mt-4 w-full rounded-xl bg-white px-4 py-3 font-black text-emerald-950" onClick={() => setCompletionOpen(true)} type="button">View result</button>
         </section>}
         <section className="rounded-2xl border border-emerald-950/15 bg-white/75 p-4">

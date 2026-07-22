@@ -1,0 +1,7 @@
+# Format: category:word
+# These exclusions are defense in depth after ESDB's no-suggest filtering.
+offensive:bitch
+offensive:fucks
+offensive:shits
+offensive:sluts
+offensive:whore

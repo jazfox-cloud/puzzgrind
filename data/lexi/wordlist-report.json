@@ -1,0 +1,33 @@
+{
+  "source": {
+    "release": "rel-2026.02.25",
+    "commit": "7e99edab8e32f9f9ea2b15f249ca8d4d67237410",
+    "copyrightSha256": "090575a131b4260926c7a6b30a90aca0f5db5fbb5c46778e0c5855227bf6ebc3",
+    "generationCommand": "scowl --db scowl.db word-list 60 A 1 --wo-poses=abbr --categories= --nosuggest=<all-levels>"
+  },
+  "counts": {
+    "sourceDefaultUnique": 109905,
+    "sourceOrdinaryUnique": 109071,
+    "validGuesses": 5097,
+    "answerCandidatesForHumanReview": 180
+  },
+  "filters": {
+    "abbreviationOrAbbreviationOnly": 409,
+    "specialCategoryOnly": 425,
+    "manualNoise": 0,
+    "manualOffensive": 5,
+    "noSuggestOffensive": 87,
+    "nonAsciiOrDiacritic": 177,
+    "properCaseOrName": 20861,
+    "punctuationOrCompound": 9463,
+    "wrongLength": 73381
+  },
+  "duplicateSourceLines": {
+    "default": 0,
+    "ordinary": 0
+  },
+  "artifacts": {
+    "validGuessesSha256": "641db7bcb7ec2118576cb6cbe10f0a4a8937cbed5775b86b21fe0318920671a2",
+    "answerCandidatesSha256": "4e2450679f1bf6f4c0ce08229e27098816376a4150410f9939dbf1176cd981a0"
+  }
+}

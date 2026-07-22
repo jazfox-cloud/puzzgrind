@@ -1,3 +1,10 @@
+import { formatClockTime } from "@/lib/format/time";
+import { copyText, shareText } from "@/lib/share/web-share";
+import type { ShareCapability, ShareOutcome } from "@/lib/share/web-share";
+
+export { secondsUntilNextUtcMidnight } from "@/lib/daily/utc";
+export type { ShareOutcome } from "@/lib/share/web-share";
+
 export const ENGAGEMENT_STORAGE_KEY = "puzzgrind_sudoku_engagement_v1";
 
 export type CompletionFeedback = "just_right" | "too_easy" | "too_hard";
@@ -21,13 +28,6 @@ type CompletionInput = {
   puzzleDate: string;
   puzzleId: string;
 };
-
-type ShareCapability = {
-  clipboard?: { writeText: (text: string) => Promise<void> };
-  share?: (data: { text: string; title: string }) => Promise<void>;
-};
-
-export type ShareOutcome = "canceled" | "copied" | "failed" | "shared";
 
 export const EMPTY_SUDOKU_STATS: LocalSudokuStats = {
   puzzlesCompleted: 0,
@@ -123,7 +123,7 @@ export function recordCompletionFeedback(storage: StorageLike, puzzleId: string,
 }
 
 export function formatResultTime(seconds: number): string {
-  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  return formatClockTime(seconds);
 }
 
 export function buildResultShareText(input: { currentStreak: number; durationSeconds: number; hintsUsed: number }): string {
@@ -138,32 +138,10 @@ export function buildResultShareText(input: { currentStreak: number; durationSec
   ].join("\n");
 }
 
-async function copyText(capability: ShareCapability, text: string): Promise<ShareOutcome> {
-  if (!capability.clipboard) return "failed";
-  try {
-    await capability.clipboard.writeText(text);
-    return "copied";
-  } catch {
-    return "failed";
-  }
-}
-
 export function copyResultText(capability: ShareCapability, text: string): Promise<ShareOutcome> {
   return copyText(capability, text);
 }
 
 export async function shareResultText(capability: ShareCapability, text: string): Promise<ShareOutcome> {
-  if (!capability.share) return copyText(capability, text);
-  try {
-    await capability.share({ title: "PuzzGrind Daily Sudoku", text });
-    return "shared";
-  } catch (error) {
-    if (error && typeof error === "object" && "name" in error && error.name === "AbortError") return "canceled";
-    return copyText(capability, text);
-  }
-}
-
-export function secondsUntilNextUtcMidnight(now = new Date()): number {
-  const next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
-  return Math.max(0, Math.floor((next - now.getTime()) / 1000));
+  return shareText(capability, { title: "PuzzGrind Daily Sudoku", text });
 }

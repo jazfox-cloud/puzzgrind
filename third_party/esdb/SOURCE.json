@@ -1,0 +1,18 @@
+{
+  "name": "English Speller Database (ESDB, formerly SCOWL)",
+  "repository": "https://github.com/en-wl/wordlist",
+  "release": "rel-2026.02.25",
+  "commit": "7e99edab8e32f9f9ea2b15f249ca8d4d67237410",
+  "archiveUrl": "https://github.com/en-wl/wordlist/archive/refs/tags/rel-2026.02.25.tar.gz",
+  "downloadedAt": "2026-07-22",
+  "archiveSha256": "36efd5577ff6d8feaf6d16feda321381b2be633da38ce55e4644284433bb5ae6",
+  "copyrightSha256": "090575a131b4260926c7a6b30a90aca0f5db5fbb5c46778e0c5855227bf6ebc3",
+  "generationProfile": {
+    "size": 60,
+    "spelling": "A",
+    "variantLevel": 1,
+    "excludedPoses": ["abbr"],
+    "includeSpecialCategories": false,
+    "wordShape": "^[a-z]{5}$"
+  }
+}

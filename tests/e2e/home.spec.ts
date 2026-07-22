@@ -271,7 +271,8 @@ test("shows Top 10/20 and lets a completed anonymous player join at 390px with A
   await page.goto("/sudoku");
   await expect(page.getByRole("heading", { name: "Today's Leaderboard" })).toBeVisible();
   await expect(page.getByText("25 completed · 20 joined", { exact: true })).toBeVisible();
-  await expect(page.getByRole("listitem")).toHaveCount(10);
+  const leaderboardSection = page.locator('section[aria-labelledby="daily-leaderboard-title"]');
+  await expect(leaderboardSection.getByRole("listitem")).toHaveCount(10);
 
   const dialog = page.getByRole("dialog", { name: "Puzzle complete!" });
   await dialog.getByRole("button", { name: "Join today’s leaderboard" }).click();
@@ -280,7 +281,7 @@ test("shows Top 10/20 and lets a completed anonymous player join at 390px with A
   await expect(dialog.getByText("You ranked #12 today")).toBeVisible();
   await dialog.getByRole("button", { name: "Close" }).click();
   await page.getByRole("button", { name: "Show Top 20" }).click();
-  await expect(page.getByRole("listitem")).toHaveCount(20);
+  await expect(leaderboardSection.getByRole("listitem")).toHaveCount(20);
   await expect(page.locator('script[src*="googletagmanager.com"]')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

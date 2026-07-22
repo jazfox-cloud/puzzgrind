@@ -2,6 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { ImageResponse } from "next/og";
 
 import { limitApiRequest } from "@/lib/api/rate-limit";
+import { formatClockTime } from "@/lib/format/time";
 import { verifyShareToken } from "@/lib/security/share-token";
 
 export async function GET(request: Request, context: { params: Promise<{ token: string }> }) {
@@ -11,7 +12,7 @@ export async function GET(request: Request, context: { params: Promise<{ token: 
   if (limited) return limited;
   const result = await verifyShareToken(token, env.SESSION_SIGNING_SECRET);
   if (!result) return new Response("Not found", { status: 404 });
-  const formattedTime = `${String(Math.floor(result.durationSeconds / 60)).padStart(2, "0")}:${String(result.durationSeconds % 60).padStart(2, "0")}`;
+  const formattedTime = formatClockTime(result.durationSeconds);
   return new ImageResponse(
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "64px 72px", background: "#f6f3ea", color: "#14221d", fontFamily: "Arial, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 34, fontWeight: 800 }}>PuzzGrind</span><span style={{ padding: "12px 22px", borderRadius: 999, background: "#dbff6e", fontSize: 22, fontWeight: 800, letterSpacing: 3 }}>DAILY SUDOKU</span></div>

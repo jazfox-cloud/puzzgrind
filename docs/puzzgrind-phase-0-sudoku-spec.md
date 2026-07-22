@@ -1,6 +1,10 @@
 # PuzzGrind Phase 0 — Sudoku execution constraints
 
-Status: approved for incremental development
+Status: completed / historical (Phase 0 production baseline)
+
+The restrictions in this document governed the Daily Sudoku cold-start period. In particular, the
+temporary prohibition on multiple games does not apply to the approved Phase 1 Lexi Daily work.
+Sudoku URLs, data, SEO, and production behavior remain protected by these historical constraints.
 
 Domain: `https://puzzgrind.com`
 
