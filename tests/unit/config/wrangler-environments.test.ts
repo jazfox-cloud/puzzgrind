@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 
 import { describe, expect, it } from "vitest";
 
-type RateLimitConfig = { name: string; namespace_id: string };
+type RateLimitConfig = { name: string; namespace_id: string; simple?: { limit: number; period: number } };
 type EnvironmentConfig = {
   vars: { APP_ENV: string };
   ratelimits: RateLimitConfig[];
@@ -30,9 +30,19 @@ describe("Wrangler environment isolation", () => {
   it("keeps preview, staging, and production rate-limit namespaces distinct", () => {
     const namespaces = [config.ratelimits, config.env.staging.ratelimits, config.env.production.ratelimits]
       .map((bindings) => new Set(bindings.map((binding) => binding.namespace_id)));
-    expect(namespaces.every((set) => set.size === 6)).toBe(true);
+    expect(namespaces.map((set) => set.size)).toEqual([6, 11, 6]);
     expect([...namespaces[0]].some((id) => namespaces[1].has(id) || namespaces[2].has(id))).toBe(false);
     expect([...namespaces[1]].some((id) => namespaces[2].has(id))).toBe(false);
+  });
+
+  it("uses isolated Staging Lexi namespaces and approved thresholds", () => {
+    expect(config.env.staging.ratelimits.slice(6)).toEqual([
+      { name: "RATE_LIMIT_LEXI_START", namespace_id: "2201", simple: { limit: 12, period: 60 } },
+      { name: "RATE_LIMIT_LEXI_GUESS", namespace_id: "2202", simple: { limit: 12, period: 60 } },
+      { name: "RATE_LIMIT_LEXI_HINT", namespace_id: "2203", simple: { limit: 4, period: 60 } },
+      { name: "RATE_LIMIT_LEXI_READ", namespace_id: "2204", simple: { limit: 60, period: 60 } },
+      { name: "RATE_LIMIT_LEXI_SUBMIT", namespace_id: "2205", simple: { limit: 6, period: 60 } },
+    ]);
   });
 
   it("labels all deployed targets explicitly", () => {

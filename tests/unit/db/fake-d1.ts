@@ -71,8 +71,8 @@ export class FakeD1Database implements D1DatabaseLike {
     this.results.push({ kind: "all", value: { results: value, success: true } });
   }
 
-  queueRun(): void {
-    this.results.push({ kind: "run", value: { meta: { changes: 1 }, success: true } });
+  queueRun(changes = 1): void {
+    this.results.push({ kind: "run", value: { meta: { changes }, success: true } });
   }
 
   queueError(value: Error): void {

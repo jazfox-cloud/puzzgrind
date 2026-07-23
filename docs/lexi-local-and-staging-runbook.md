@@ -16,7 +16,13 @@ Create five independent Rate Limiter bindings in each deployed environment:
 - `RATE_LIMIT_LEXI_READ`
 - `RATE_LIMIT_LEXI_SUBMIT`
 
-Each environment needs real Cloudflare-provided namespace/resource IDs. Local, preview/staging, and production must not share IDs. Record actual IDs only when the resources exist; do not add invented or placeholder IDs to `wrangler.jsonc`.
+Cloudflare Rate Limiting namespace IDs are account-unique positive integers defined in Worker configuration; they are not separately provisioned UUID resources. Staging uses Lexi-only namespaces `2201`–`2205`, distinct from Production `1101`–`1106`, Staging Sudoku `2101`–`2106`, and Preview `3101`–`3106`.
+
+Wrangler's remote migration `query` path cannot parse the trigger bodies in `0003_lexi_daily.sql` even though the same SQL passes local D1 and SQLite tests. The Staging-only `d1:migrate:staging` command therefore uses Wrangler's atomic remote file-ingestion path and records `0003` in `d1_migrations` in the same import. It requires explicit `--env staging`, the exact Staging database ID, and the database name confirmation. This compatibility path must not be used for Production.
+
+The Staging QA seed is separate from the development seed and refuses implicit targets. Put exactly three unique QA-only answers in a JSON `answers` array under the gitignored `.private/lexi-staging/` directory. Run `pnpm d1:lexi:seed:staging -- --remote true --env staging --database-id <staging-id> --confirm puzzgrind-staging-db --acknowledge LEXI_STAGING_QA_ONLY --qa-file .private/lexi-staging/<private-file>.json`. It protects occupied dates, writes only three clearly labeled QA puzzles and four fixture sessions, never prints the private answers, and deletes its temporary SQL file after import.
+
+If Staging has no current-UTC Sudoku fixture, `pnpm d1:sudoku:seed:staging -- --remote true --env staging --database-id <staging-id> --confirm puzzgrind-staging-db --acknowledge SUDOKU_STAGING_QA_ONLY` copies the most recent Staging-only published grid into the current date without printing its givens or solution. It refuses to replace a non-QA current-date puzzle.
 
 ## Proposed staging sequence — do not run without approval
 

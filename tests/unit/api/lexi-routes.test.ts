@@ -66,6 +66,19 @@ describe("Lexi API response and authorization boundaries", () => {
     expect(body).not.toHaveProperty("answer");
   });
 
+  it("recognizes a new session when an insert trigger increases D1 meta changes", async () => {
+    const db = new FakeD1Database();
+    db.queueFirst(puzzleRow());
+    db.queueRun(2);
+    db.queueFirst(sessionRow());
+    context.env = { APP_ENV: "test", DB: db, RATE_LIMIT_LEXI_START: allow,
+      SESSION_SIGNING_SECRET: "test-secret" } as CloudflareEnv;
+    const response = await startSession(post("https://puzzgrind.test/api/lexi/session/start",
+      { anonymousId: sessionRow().anonymous_id }));
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toMatchObject({ restored: false });
+  });
+
   it("evaluates and commits a winning guess entirely from server state", async () => {
     const db = new FakeD1Database();
     const issuedAt = now();
@@ -74,7 +87,7 @@ describe("Lexi API response and authorization boundaries", () => {
       anonymousId: sessionRow().anonymous_id as string, nonce: "lexi-test-nonce", issuedAt, expiresAt: issuedAt + 60 }, secret);
     db.queueFirst(sessionRow());
     db.queueFirst(puzzleRow());
-    db.queueRun();
+    db.queueRun(2);
     db.queueFirst(sessionRow({ status: "won", guesses_json: JSON.stringify([{ guess: "jazzy",
       evaluation: ["correct", "correct", "correct", "correct", "correct"] }]), attempt_count: 1,
       revision: 1, completed_at: issuedAt, duration_seconds: 10, updated_at: issuedAt }));

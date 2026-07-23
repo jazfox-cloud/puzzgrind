@@ -24,7 +24,7 @@ export class LexiHintRepository {
         id, session_id, puzzle_id, hint_type, revealed_letter, created_at
       ) VALUES (?, ?, ?, 'reveal_letter', ?, ?)`)
         .bind(input.id, input.sessionId, input.puzzleId, input.revealedLetter, input.createdAt).run();
-      return { created: (result.meta.changes ?? 0) === 1, event: input };
+      return { created: (result.meta.changes ?? 0) > 0, event: input };
     } catch (error) {
       const mapped = toDatabaseError(error, "Recording a Lexi hint");
       if (mapped instanceof DatabaseError && mapped.code === "constraint") {

@@ -38,7 +38,7 @@ export class LexiLeaderboardRepository {
         .bind(entry.id, entry.puzzleId, entry.puzzleDate, entry.playerKeyHash, entry.displayName,
           entry.verifiedHintsUsed, entry.verifiedAttempts, entry.verifiedCompletionSeconds,
           entry.completedAt, entry.createdAt, entry.sessionId).run();
-      if ((result.meta.changes ?? 0) === 1) return { created: true, entry };
+      if ((result.meta.changes ?? 0) > 0) return { created: true, entry };
       const existing = await this.findBySession(entry.sessionId);
       if (!existing) {
         const byPlayer = await this.db.prepare(`SELECT * FROM lexi_daily_leaderboard

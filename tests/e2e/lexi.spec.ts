@@ -51,7 +51,7 @@ test("plays, restores, hints, shares, and joins Lexi at mobile width", async ({ 
   await page.getByRole("button", { name: "Show Top 20" }).click();
   await expect(leaderboard.getByRole("listitem")).toHaveCount(20);
   await page.getByRole("button", { name: "Start today’s Lexi" }).click();
-  await expect(page.getByRole("button", { name: "Start today’s Lexi" })).toHaveCount(0);
+  await expect(page.getByText("One letter hint per game", { exact: true })).toBeVisible();
   await page.keyboard.type("xxxxx"); await page.keyboard.press("Enter");
   await expect(page.getByText("That word is not in the Lexi word list.")).toBeVisible();
   await page.keyboard.press("Backspace"); await page.keyboard.press("Backspace"); await page.keyboard.press("Backspace"); await page.keyboard.press("Backspace"); await page.keyboard.press("Backspace");
@@ -87,7 +87,7 @@ test("closes input on an expired Lexi session without consuming a client attempt
     status: "started", token: "token" } }));
   await page.route("**/api/lexi/guess", (route) => route.fulfill({ status: 409, json: { error: "session_expired" } }));
   await page.goto("/games/lexi-daily"); await page.getByRole("button", { name: "Start today’s Lexi" }).click();
-  await expect(page.getByRole("button", { name: "Start today’s Lexi" })).toHaveCount(0);
+  await expect(page.getByText("One letter hint per game", { exact: true })).toBeVisible();
   await page.keyboard.type("cigar"); await page.keyboard.press("Enter");
   await expect(page.getByText(/expired/)).toBeVisible();
   await expect(page.getByRole("gridcell", { name: "C, not submitted" })).toBeVisible();

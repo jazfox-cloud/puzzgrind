@@ -43,7 +43,7 @@ export class LexiSessionRepository {
         .bind(input.id, input.anonymousId, input.puzzleId, input.challengeNonce, input.now, input.now).run();
       const session = await this.findByAnonymousPuzzle(input.anonymousId, input.puzzleId);
       if (!session) throw new Error("Lexi session insert could not be read");
-      return { created: (result.meta.changes ?? 0) === 1, session };
+      return { created: (result.meta.changes ?? 0) > 0, session };
     } catch (error) { throw toDatabaseError(error, "Creating a Lexi session"); }
   }
 
@@ -68,7 +68,7 @@ export class LexiSessionRepository {
         WHERE id = ? AND revision = ? AND status IN ('started', 'in_progress') AND attempt_count < 6`)
         .bind(JSON.stringify(input.guesses), input.status, completed ? input.now : null,
           completed, input.now, input.now, input.id, input.expectedRevision).run();
-      if ((result.meta.changes ?? 0) === 1) {
+      if ((result.meta.changes ?? 0) > 0) {
         const session = await this.findById(input.id);
         if (!session) throw new Error("Updated Lexi session disappeared");
         return { ok: true, session };
@@ -87,7 +87,7 @@ export class LexiSessionRepository {
       const result = await this.db.prepare(`UPDATE lexi_sessions SET status = 'expired', revision = revision + 1, updated_at = ?
         WHERE id = ? AND revision = ? AND status IN ('started', 'in_progress')`)
         .bind(now, id, expectedRevision).run();
-      return (result.meta.changes ?? 0) === 1;
+      return (result.meta.changes ?? 0) > 0;
     } catch (error) { throw toDatabaseError(error, "Expiring a Lexi session"); }
   }
 }
