@@ -1,0 +1,18 @@
+diff --git a/wrangler.jsonc b/wrangler.jsonc
+index c2f93c1..9eb3e5c 100644
+--- a/wrangler.jsonc
++++ b/wrangler.jsonc
+@@ -42,7 +42,12 @@
+         { "name": "RATE_LIMIT_COMPLETE", "namespace_id": "1103", "simple": { "limit": 6, "period": 60 } },
+         { "name": "RATE_LIMIT_HINT", "namespace_id": "1104", "simple": { "limit": 12, "period": 60 } },
+         { "name": "RATE_LIMIT_SHARE", "namespace_id": "1105", "simple": { "limit": 10, "period": 60 } },
+-        { "name": "RATE_LIMIT_SHARE_IMAGE", "namespace_id": "1106", "simple": { "limit": 120, "period": 60 } }
++        { "name": "RATE_LIMIT_SHARE_IMAGE", "namespace_id": "1106", "simple": { "limit": 120, "period": 60 } },
++        { "name": "RATE_LIMIT_LEXI_START", "namespace_id": "1201", "simple": { "limit": 12, "period": 60 } },
++        { "name": "RATE_LIMIT_LEXI_GUESS", "namespace_id": "1202", "simple": { "limit": 12, "period": 60 } },
++        { "name": "RATE_LIMIT_LEXI_HINT", "namespace_id": "1203", "simple": { "limit": 4, "period": 60 } },
++        { "name": "RATE_LIMIT_LEXI_READ", "namespace_id": "1204", "simple": { "limit": 60, "period": 60 } },
++        { "name": "RATE_LIMIT_LEXI_SUBMIT", "namespace_id": "1205", "simple": { "limit": 6, "period": 60 } }
+       ],
+       "d1_databases": [
+         {

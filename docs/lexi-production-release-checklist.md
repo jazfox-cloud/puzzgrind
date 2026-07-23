@@ -1,6 +1,37 @@
 # Lexi Daily — Production release checklist
 
-Status: pre-release checklist only. None of these Production actions were executed during Phase 1B batch four.
+Status: pre-release checklist only. None of these Production actions were
+executed during Phase 1B batch five preparation.
+
+## Locked release order
+
+1. Run final local lint, typecheck, unit/API/migration tests, Playwright,
+   Production build, `git diff --check`, deploy guard, and Production answer
+   secrecy guard.
+2. Commit only the approved fifth-batch code; do not push.
+3. Reserve the audited Production Lexi Rate Limiter IDs `1201`–`1205`, apply
+   only the reviewed `env.production.ratelimits` diff, and validate an inactive
+   version's bindings if that optional Cloudflare step is approved.
+4. Capture and privately record the Production D1 Time Travel bookmark.
+5. Reconfirm account `7a04450464f7860772c01d269c4bf8af`, database
+   `puzzgrind-db`, and ID `d3e6e288-046a-4552-b6d2-39f014276af7`.
+6. Run the trigger-safe 0003 atomic file import, then verify five tables, six
+   explicit indexes, four triggers, and one ledger row.
+7. Generate the private approved 90-day schedule and run seed dry-run.
+8. Execute the idempotent Production seed and verify today's `published` row
+   without selecting or logging its answer.
+9. Push the exact commit only after bindings, migration, and today's puzzle are
+   ready.
+10. Wait for Git-integrated Production deployment and verify its source SHA.
+11. Run Lexi API/UI smoke, Sudoku regression, SEO/static-route checks, Rate
+    Limit checks, and answer/log leakage checks.
+12. For Worker failure, roll back the Worker version and retain additive Lexi
+    schema. Use full-database D1 Time Travel only for a confirmed D1 incident.
+
+Cloudflare Rate Limiter namespace IDs are defined by Worker bindings, not
+standalone resources. The reviewed safe equivalent to separate “create” and
+“bind” steps is documented in `lexi-production-readiness-dry-run.md`; human
+acceptance of that capability adjustment is a release gate.
 
 ## Release gate
 

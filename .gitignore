@@ -17,6 +17,9 @@
 /.wrangler
 /.pnpm-store
 /.private/lexi-staging/
+/.private/lexi-production/
+/*.production-seed.sql.local
+/*.production-migration.sql.local
 *.local
 
 # editor and OS

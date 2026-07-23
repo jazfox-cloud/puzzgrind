@@ -104,3 +104,26 @@ The judgments below are a first-pass editorial screen. “Common” means recogn
 - Reject: 0
 - Repeated-letter candidates: 15
 - This document does not approve or sequence any Production answer.
+
+## Replacement pool review
+
+These words come from positions after the first 90 in the same pinned, validated
+candidate file. They are alternatives only: none is approved, substituted, or
+assigned a date by this review.
+
+| Word | Flag reason | Common | Proper-name risk | Regional/spelling dispute | Offensive risk | Repeated letter | Recommendation | Reason |
+|---|---|---|---|---|---|---|---|---|
+| delay | Replacement candidate | Yes | No | No | No | No | Keep as alternative | Familiar noun/verb with one standard spelling. |
+| dream | Replacement candidate | Yes | No | No | No | No | Keep as alternative | Broadly familiar noun/verb without a sensitive default reading. |
+| drink | Replacement candidate | Yes | No | No | No | No | Keep as alternative | High-frequency noun/verb and easy to understand. |
+| drive | Replacement candidate | Yes | No | No | No | No | Keep as alternative | High-frequency verb/noun with stable spelling. |
+| early | Replacement candidate | Yes | No | No | No | No | Keep as alternative | High-frequency adjective/adverb. |
+| empty | Replacement candidate | Yes | No | No | No | No | Keep as alternative | Common adjective/verb with clear spelling. |
+| enjoy | Replacement candidate | Yes | No | No | No | No | Keep as alternative | Common positive verb. |
+| enter | Replacement candidate | Yes | No | No | No | Yes | Keep as alternative | High-frequency verb and a useful repeated-letter case. |
+| event | Replacement candidate | Yes | No | No | No | Yes | Keep as alternative | Common noun with broad English-market familiarity. |
+| exact | Replacement candidate | Yes | No | No | No | No | Keep as alternative | Common adjective/verb with unambiguous spelling. |
+| field | Replacement candidate | Yes | No | No | No | No | Keep as alternative | Common noun/verb with several familiar senses. |
+| final | Replacement candidate | Yes | No | No | No | No | Keep as alternative | Common adjective/noun with stable spelling. |
+
+No current `needs review` word is automatically replaced by this section.
