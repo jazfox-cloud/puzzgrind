@@ -1,10 +1,10 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
-  buildAtomicSeedSql,
   readPrivateProductionInput,
   validateAndBuildSchedule,
+  withAtomicSeedSqlFile,
 } from "./lib/lexi-production-schedule.mjs";
 import {
   assertProductionTarget,
@@ -56,14 +56,10 @@ if (readiness?.migration_count !== 1 || readiness?.table_count !== 1) {
 }
 
 const privateRoot = resolve(process.cwd(), ".private/lexi-production");
-mkdirSync(privateRoot, { recursive: true, mode: 0o700 });
 const tempFile = resolve(privateRoot, `lexi-${schedule.summary.scheduleSha256}.production-seed.sql.local`);
-try {
-  writeFileSync(tempFile, buildAtomicSeedSql(schedule), { mode: 0o600 });
-  execFileSync(wrangler, [...baseArgs, "--file", tempFile, "--yes"], { stdio: "inherit" });
-} finally {
-  rmSync(tempFile, { force: true });
-}
+withAtomicSeedSqlFile(schedule, tempFile, (file) => {
+  execFileSync(wrangler, [...baseArgs, "--file", file, "--yes"], { stdio: "inherit" });
+});
 
 const escapedFirstDate = schedule.summary.firstDate.replaceAll("'", "''");
 const escapedLastDate = schedule.summary.lastDate.replaceAll("'", "''");

@@ -127,10 +127,33 @@ release date must equal the current UTC date. A temporary SQL file is created
 with mode `0600` inside the gitignored private directory and deleted in
 `finally`.
 
-The seed import uses temporary proposed rows and constraint guards. Same
-date/same answer is a no-op; same date/different answer or the same answer on a
-different date aborts the whole D1 file import. Output is limited to target,
-count, first/last date, ESDB provenance, input hash, and schedule hash.
+The seed import is one SQLite statement: a private 90-row `VALUES` set inside
+an `incoming` CTE, a global conflict CTE, and one `INSERT ... SELECT`. It does
+not create TEMP or permanent helper objects and does not depend on Wrangler's
+multi-statement splitter. Same date/same answer is idempotent; a matching
+partial schedule is supplemented. Same date/different answer, the same answer
+on another date, or mismatched immutable schedule metadata makes the global
+conflict CTE suppress every incoming write. The independent answer-free
+verification then fails closed instead of accepting a zero-change conflict.
+Output is limited to target, count, first/last date, ESDB provenance, input
+hash, and schedule hash.
+
+The compatibility runner uses only isolated QA answers and reserved 2099 dates:
+
+```sh
+pnpm d1:lexi:validate-seed:staging -- \
+  --env staging \
+  --account-id 7a04450464f7860772c01d269c4bf8af \
+  --database-name puzzgrind-staging-db \
+  --database-id d3f0b3d8-81a8-40de-96f4-7ed248e0fb93 \
+  --confirm LEXI_SEED_COMPAT_QA
+```
+
+It verifies first insert, identical rerun, matching partial supplement, both
+conflict directions, a later-row constraint failure, one published plus 89
+scheduled rows, `0600`/`finally` SQL cleanup, and exact restoration of the
+Staging ledger, Lexi schema, table counts, Sudoku data counts, and foreign-key
+state.
 
 Dry-run, after the private input and answer-free human audit exist:
 

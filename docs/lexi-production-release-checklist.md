@@ -1,7 +1,8 @@
 # Lexi Daily — Production release checklist
 
-Status: pre-release checklist only. None of these Production actions were
-executed during Phase 1B batch five preparation.
+Status: release and recovery runbook. Execution evidence belongs in the
+release report; this checklist intentionally contains no answers, D1 bookmark,
+tokens, or dated answer mapping.
 
 ## Locked release order
 
@@ -65,6 +66,15 @@ acceptance of that capability adjustment is a release gate.
 - [ ] Generate a Production-only seed from the separately approved schedule; do not reuse Development or Staging QA seed scripts.
 - [ ] Require explicit Production env, database name/ID, release identifier, and second confirmation before seed execution.
 - [ ] Seed only the approved window and verify no answer is exposed through HTML, RSC, client bundles, source maps, static JSON, or public files.
+- [ ] Confirm the generated seed is exactly one `WITH incoming (...) AS
+  (VALUES ...) INSERT` statement and contains no TEMP schema, helper table, or
+  statement-splitting dependency.
+- [ ] Run `pnpm d1:lexi:validate-seed:staging -- --env staging ... --confirm
+  LEXI_SEED_COMPAT_QA` against the exact isolated Staging D1. Require empty,
+  repeat, partial supplement, both conflict directions, injected failure,
+  cleanup, ledger/schema/data restoration, and no-helper-object checks to pass.
+- [ ] Treat a successful zero-change conflict statement as fail-closed: the
+  independent answer-free verification must fail and block push/deploy.
 
 ## Production deploy
 

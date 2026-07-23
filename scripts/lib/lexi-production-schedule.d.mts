@@ -48,4 +48,9 @@ export function validateAndBuildSchedule(input: ProductionInput, audit: Producti
   generatedAt?: number;
 }): ProductionSchedule;
 export function buildAtomicSeedSql(schedule: ProductionSchedule): string;
+export function withAtomicSeedSqlFile<T>(
+  schedule: ProductionSchedule,
+  file: string,
+  callback: (file: string) => T,
+): T;
 export function applySeedLocally(db: DatabaseSync, schedule: ProductionSchedule): void;

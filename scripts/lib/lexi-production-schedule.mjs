@@ -1,6 +1,14 @@
 import { createHash } from "node:crypto";
-import { readFileSync, realpathSync } from "node:fs";
-import { relative, resolve } from "node:path";
+import {
+  chmodSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, relative, resolve } from "node:path";
 
 const ASCII_FIVE = /^[a-z]{5}$/u;
 const DATE = /^\d{4}-\d{2}-\d{2}$/u;
@@ -111,58 +119,108 @@ function sqlString(value) {
 }
 
 export function buildAtomicSeedSql(schedule) {
+  const sourceReference =
+    `ESDB:${schedule.summary.esdbCommit};schedule:${schedule.summary.scheduleSha256}`;
   const values = schedule.rows.map((row) => `(${[
     row.id, row.puzzleDate, row.answer, row.status,
-    `ESDB:${schedule.summary.esdbCommit};schedule:${schedule.summary.scheduleSha256}`,
+    sourceReference,
     "lexi-production-schedule-v1", row.publishedAt, row.createdAt, row.updatedAt,
   ].map((value) => value === null ? "NULL" :
     typeof value === "number" ? value : sqlString(value)).join(",")})`).join(",\n");
-  return `PRAGMA foreign_keys=ON;
-CREATE TEMP TABLE lexi_proposed_schedule (
-  id TEXT PRIMARY KEY, puzzle_date TEXT NOT NULL UNIQUE, answer TEXT NOT NULL,
-  status TEXT NOT NULL, source_reference TEXT NOT NULL, validation_version TEXT NOT NULL,
-  published_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-);
-INSERT INTO lexi_proposed_schedule VALUES
-${values};
-CREATE TEMP TABLE lexi_seed_guard (ok INTEGER NOT NULL CHECK (ok = 1));
-INSERT INTO lexi_seed_guard
-SELECT 0 WHERE EXISTS (
-  SELECT 1 FROM lexi_puzzles existing
-  JOIN lexi_proposed_schedule proposed ON proposed.puzzle_date = existing.puzzle_date
-  WHERE existing.answer != proposed.answer
-);
-INSERT INTO lexi_seed_guard
-SELECT 0 WHERE EXISTS (
-  SELECT 1 FROM lexi_puzzles existing
-  JOIN lexi_proposed_schedule proposed ON proposed.answer = existing.answer
-  WHERE existing.puzzle_date != proposed.puzzle_date
-);
+  return `WITH incoming (
+  id,puzzle_date,answer,status,source_reference,validation_version,
+  published_at,created_at,updated_at
+) AS (
+  VALUES
+${values}
+),
+conflicts AS (
+  SELECT 1 AS conflict
+  FROM lexi_puzzles existing
+  JOIN incoming ON incoming.puzzle_date = existing.puzzle_date
+  WHERE incoming.answer != existing.answer
+  UNION ALL
+  SELECT 1
+  FROM lexi_puzzles existing
+  JOIN incoming ON incoming.answer = existing.answer
+  WHERE incoming.puzzle_date != existing.puzzle_date
+  UNION ALL
+  SELECT 1
+  FROM lexi_puzzles existing
+  JOIN incoming
+    ON incoming.puzzle_date = existing.puzzle_date
+   AND incoming.answer = existing.answer
+  WHERE existing.id != incoming.id
+     OR existing.status != incoming.status
+     OR IFNULL(existing.source_reference, '') != incoming.source_reference
+     OR existing.validation_version != incoming.validation_version
+     OR existing.published_at IS NOT incoming.published_at
+  UNION ALL
+  SELECT 1
+  FROM lexi_puzzles existing
+  JOIN incoming ON incoming.id = existing.id
+  WHERE incoming.puzzle_date != existing.puzzle_date
+     OR incoming.answer != existing.answer
+)
 INSERT INTO lexi_puzzles (
   id,puzzle_date,answer,status,source_reference,validation_version,
   published_at,created_at,updated_at
 )
 SELECT id,puzzle_date,answer,status,source_reference,validation_version,
   published_at,created_at,updated_at
-FROM lexi_proposed_schedule proposed
-WHERE NOT EXISTS (
-  SELECT 1 FROM lexi_puzzles existing WHERE existing.puzzle_date = proposed.puzzle_date
-);
-INSERT INTO lexi_seed_guard
-SELECT 0 WHERE (
-  SELECT COUNT(*) FROM lexi_puzzles existing
-  JOIN lexi_proposed_schedule proposed
-    ON proposed.puzzle_date = existing.puzzle_date AND proposed.answer = existing.answer
-) != 90;
-DROP TABLE lexi_seed_guard;
-DROP TABLE lexi_proposed_schedule;
+FROM incoming
+WHERE NOT EXISTS (SELECT 1 FROM conflicts)
+  AND NOT EXISTS (
+    SELECT 1
+    FROM lexi_puzzles existing
+    WHERE existing.puzzle_date = incoming.puzzle_date
+      AND existing.answer = incoming.answer
+  );
 `;
+}
+
+export function withAtomicSeedSqlFile(schedule, file, callback) {
+  mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
+  try {
+    writeFileSync(file, buildAtomicSeedSql(schedule), { mode: 0o600 });
+    chmodSync(file, 0o600);
+    if ((statSync(file).mode & 0o777) !== 0o600) {
+      throw new Error("Private seed SQL must use mode 0600");
+    }
+    return callback(file);
+  } finally {
+    rmSync(file, { force: true });
+  }
 }
 
 export function applySeedLocally(db, schedule) {
   db.exec("BEGIN IMMEDIATE");
   try {
     db.exec(buildAtomicSeedSql(schedule));
+    const sourceReference =
+      `ESDB:${schedule.summary.esdbCommit};schedule:${schedule.summary.scheduleSha256}`;
+    const verification = db.prepare(`SELECT COUNT(*) AS count,
+      COUNT(DISTINCT puzzle_date) AS unique_dates,
+      COUNT(DISTINCT answer) AS unique_answers,
+      SUM(CASE WHEN puzzle_date=? AND status='published' AND published_at IS NOT NULL
+        THEN 1 ELSE 0 END) AS published_count,
+      SUM(CASE WHEN puzzle_date>? AND status='scheduled' AND published_at IS NULL
+        THEN 1 ELSE 0 END) AS scheduled_count,
+      SUM(CASE WHEN source_reference=? AND validation_version='lexi-production-schedule-v1'
+        THEN 1 ELSE 0 END) AS source_count
+      FROM lexi_puzzles
+      WHERE puzzle_date BETWEEN ? AND ?`).get(
+      schedule.summary.firstDate,
+      schedule.summary.firstDate,
+      sourceReference,
+      schedule.summary.firstDate,
+      schedule.summary.lastDate,
+    );
+    if (verification.count !== 90 || verification.unique_dates !== 90 ||
+      verification.unique_answers !== 90 || verification.published_count !== 1 ||
+      verification.scheduled_count !== 89 || verification.source_count !== 90) {
+      throw new Error("Local answer-free post-seed verification failed");
+    }
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");

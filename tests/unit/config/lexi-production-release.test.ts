@@ -1,6 +1,7 @@
 // @vitest-environment node
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 
@@ -11,9 +12,11 @@ import {
 } from "@/scripts/lib/lexi-production-migration.mjs";
 import {
   applySeedLocally,
+  buildAtomicSeedSql,
   canonicalPrivateInput,
   sha256,
   validateAndBuildSchedule,
+  withAtomicSeedSqlFile,
 } from "@/scripts/lib/lexi-production-schedule.mjs";
 import {
   assertProductionTarget,
@@ -115,6 +118,95 @@ describe("Production Lexi schedule and seed preparation", () => {
       expect(db.prepare("SELECT COUNT(*) AS count FROM lexi_puzzles").get()).toMatchObject({ count: 90 });
       expect(db.prepare("SELECT answer FROM lexi_puzzles WHERE puzzle_date='2030-01-01'").get())
         .toMatchObject({ answer: input.answers[0] });
+    } finally {
+      db.close();
+    }
+  });
+
+  it("builds one CTE/VALUES insert statement without TEMP schema dependencies", () => {
+    const input = virtualInput();
+    const schedule = validateAndBuildSchedule(input, auditFor(input), { generatedAt: 123 });
+    const sql = buildAtomicSeedSql(schedule);
+    expect(sql.trimStart().startsWith("WITH incoming")).toBe(true);
+    expect(sql).toContain("VALUES");
+    expect(sql).toContain("INSERT INTO lexi_puzzles");
+    expect(sql.match(/\('lexi-daily-/gu)).toHaveLength(90);
+    expect(sql.replace(/'(?:''|[^'])*'/gu, "''").match(/;/gu)).toHaveLength(1);
+    expect(sql).not.toMatch(/CREATE\s+TEMP|TEMP\s+TABLE|lexi_proposed_schedule|lexi_seed_guard/iu);
+  });
+
+  it("uses a 0600 private SQL file and always deletes it", () => {
+    const input = virtualInput();
+    const schedule = validateAndBuildSchedule(input, auditFor(input), { generatedAt: 123 });
+    const root = mkdtempSync(join(tmpdir(), "puzzgrind-seed-file-"));
+    const file = join(root, "seed.sql.local");
+    try {
+      expect(() => withAtomicSeedSqlFile(schedule, file, (created) => {
+        expect(created).toBe(file);
+        expect(existsSync(file)).toBe(true);
+        expect(statSync(file).mode & 0o777).toBe(0o600);
+        throw new Error("injected callback failure");
+      })).toThrow(/injected callback failure/u);
+      expect(existsSync(file)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("safely fills missing rows when a matching partial schedule already exists", () => {
+    const db = baseDatabase();
+    try {
+      applyMigrationLocally(db, migration3);
+      const input = virtualInput();
+      const schedule = validateAndBuildSchedule(input, auditFor(input), { generatedAt: 123 });
+      db.exec(buildAtomicSeedSql({ ...schedule, rows: schedule.rows.slice(0, 17) }));
+      expect(db.prepare("SELECT COUNT(*) AS count FROM lexi_puzzles").get()).toMatchObject({ count: 17 });
+      applySeedLocally(db, schedule);
+      expect(db.prepare("SELECT COUNT(*) AS count FROM lexi_puzzles").get()).toMatchObject({ count: 90 });
+    } finally {
+      db.close();
+    }
+  });
+
+  it("writes zero incoming rows for same-date/different-answer or same-answer/different-date conflicts", () => {
+    for (const conflictType of ["date", "answer"] as const) {
+      const db = baseDatabase();
+      try {
+        applyMigrationLocally(db, migration3);
+        const input = virtualInput();
+        const schedule = validateAndBuildSchedule(input, auditFor(input), { generatedAt: 123 });
+        const conflictAnswer = conflictType === "answer"
+          ? schedule.rows[0].answer
+          : wordlist.find((word) => !input.answers.includes(word))!;
+        const conflictDate = conflictType === "date" ? schedule.rows[0].puzzleDate : "2029-12-31";
+        db.prepare(`INSERT INTO lexi_puzzles (
+          id,puzzle_date,answer,status,source_reference,validation_version,
+          published_at,created_at,updated_at
+        ) VALUES (?,?,?,?,?,?,?,?,?)`).run(
+          `conflict-${conflictType}`, conflictDate, conflictAnswer, "scheduled",
+          "TEST_CONFLICT", "test", null, 1, 1,
+        );
+        expect(() => applySeedLocally(db, schedule)).toThrow(/post-seed verification/u);
+        expect(db.prepare("SELECT COUNT(*) AS count FROM lexi_puzzles").get()).toMatchObject({ count: 1 });
+      } finally {
+        db.close();
+      }
+    }
+  });
+
+  it("rolls the entire insert statement back when a later incoming row violates a constraint", () => {
+    const db = baseDatabase();
+    try {
+      applyMigrationLocally(db, migration3);
+      const input = virtualInput();
+      const schedule = validateAndBuildSchedule(input, auditFor(input), { generatedAt: 123 });
+      const invalid = {
+        ...schedule,
+        rows: schedule.rows.map((row, index) =>
+          index === 45 ? { ...row, status: "invalid" } : row),
+      };
+      expect(() => applySeedLocally(db, invalid)).toThrow();
+      expect(db.prepare("SELECT COUNT(*) AS count FROM lexi_puzzles").get()).toMatchObject({ count: 0 });
     } finally {
       db.close();
     }

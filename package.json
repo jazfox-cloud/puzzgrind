@@ -25,6 +25,7 @@
     "d1:migrate:local": "wrangler d1 migrations apply puzzgrind-staging-db --local --env staging",
     "d1:lexi:seed:local": "node scripts/seed-lexi-development.mjs",
     "d1:lexi:seed:staging": "node scripts/seed-lexi-staging.mjs",
+    "d1:lexi:validate-seed:staging": "node scripts/validate-lexi-seed-staging.mjs",
     "d1:sudoku:seed:staging": "node scripts/seed-sudoku-staging.mjs",
     "d1:lexi:setup:local": "pnpm d1:migrate:local && pnpm d1:lexi:seed:local",
     "d1:migrate:staging": "node scripts/apply-lexi-staging-migration.mjs",
