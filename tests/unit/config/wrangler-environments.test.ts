@@ -30,7 +30,7 @@ describe("Wrangler environment isolation", () => {
   it("keeps preview, staging, and production rate-limit namespaces distinct", () => {
     const namespaces = [config.ratelimits, config.env.staging.ratelimits, config.env.production.ratelimits]
       .map((bindings) => new Set(bindings.map((binding) => binding.namespace_id)));
-    expect(namespaces.map((set) => set.size)).toEqual([6, 11, 6]);
+    expect(namespaces.map((set) => set.size)).toEqual([6, 11, 11]);
     expect([...namespaces[0]].some((id) => namespaces[1].has(id) || namespaces[2].has(id))).toBe(false);
     expect([...namespaces[1]].some((id) => namespaces[2].has(id))).toBe(false);
   });
@@ -42,6 +42,16 @@ describe("Wrangler environment isolation", () => {
       { name: "RATE_LIMIT_LEXI_HINT", namespace_id: "2203", simple: { limit: 4, period: 60 } },
       { name: "RATE_LIMIT_LEXI_READ", namespace_id: "2204", simple: { limit: 60, period: 60 } },
       { name: "RATE_LIMIT_LEXI_SUBMIT", namespace_id: "2205", simple: { limit: 6, period: 60 } },
+    ]);
+  });
+
+  it("uses isolated Production Lexi namespaces and approved thresholds", () => {
+    expect(config.env.production.ratelimits.slice(6)).toEqual([
+      { name: "RATE_LIMIT_LEXI_START", namespace_id: "1201", simple: { limit: 12, period: 60 } },
+      { name: "RATE_LIMIT_LEXI_GUESS", namespace_id: "1202", simple: { limit: 12, period: 60 } },
+      { name: "RATE_LIMIT_LEXI_HINT", namespace_id: "1203", simple: { limit: 4, period: 60 } },
+      { name: "RATE_LIMIT_LEXI_READ", namespace_id: "1204", simple: { limit: 60, period: 60 } },
+      { name: "RATE_LIMIT_LEXI_SUBMIT", namespace_id: "1205", simple: { limit: 6, period: 60 } },
     ]);
   });
 

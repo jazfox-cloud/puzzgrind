@@ -24,11 +24,23 @@ if (productionDatabase?.database_id !== "d3e6e288-046a-4552-b6d2-39f014276af7") 
   fail("env.production has the wrong D1 database ID");
 }
 
-const expectedNamespaces = ["1101", "1102", "1103", "1104", "1105", "1106"];
-const productionNamespaces = production.ratelimits?.map(({ namespace_id }) => namespace_id) ?? [];
-if (JSON.stringify(productionNamespaces) !== JSON.stringify(expectedNamespaces)) {
-  fail("env.production must use rate-limit namespaces 1101 through 1106");
+const expectedRateLimits = [
+  { name: "RATE_LIMIT_START", namespace_id: "1101", simple: { limit: 12, period: 60 } },
+  { name: "RATE_LIMIT_SAVE", namespace_id: "1102", simple: { limit: 60, period: 60 } },
+  { name: "RATE_LIMIT_COMPLETE", namespace_id: "1103", simple: { limit: 6, period: 60 } },
+  { name: "RATE_LIMIT_HINT", namespace_id: "1104", simple: { limit: 12, period: 60 } },
+  { name: "RATE_LIMIT_SHARE", namespace_id: "1105", simple: { limit: 10, period: 60 } },
+  { name: "RATE_LIMIT_SHARE_IMAGE", namespace_id: "1106", simple: { limit: 120, period: 60 } },
+  { name: "RATE_LIMIT_LEXI_START", namespace_id: "1201", simple: { limit: 12, period: 60 } },
+  { name: "RATE_LIMIT_LEXI_GUESS", namespace_id: "1202", simple: { limit: 12, period: 60 } },
+  { name: "RATE_LIMIT_LEXI_HINT", namespace_id: "1203", simple: { limit: 4, period: 60 } },
+  { name: "RATE_LIMIT_LEXI_READ", namespace_id: "1204", simple: { limit: 60, period: 60 } },
+  { name: "RATE_LIMIT_LEXI_SUBMIT", namespace_id: "1205", simple: { limit: 6, period: 60 } },
+];
+if (JSON.stringify(production.ratelimits) !== JSON.stringify(expectedRateLimits)) {
+  fail("env.production must use the exact approved Sudoku and Lexi rate-limit bindings");
 }
+const productionNamespaces = production.ratelimits?.map(({ namespace_id }) => namespace_id) ?? [];
 
 const nonProductionNamespaces = new Set([
   ...(config.ratelimits ?? []).map(({ namespace_id }) => namespace_id),
@@ -44,4 +56,4 @@ if ([previewDatabase?.database_id, stagingDatabase?.database_id].includes(produc
   fail("Production D1 overlaps Preview or Staging");
 }
 
-console.log("Production deploy guard passed: puzzgrind / production / D1 production / namespaces 1101-1106");
+console.log("Production deploy guard passed: puzzgrind / production / D1 production / namespaces 1101-1106,1201-1205");
