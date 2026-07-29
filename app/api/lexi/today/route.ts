@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const { env } = getCloudflareContext();
     const limited = await limitApiRequest(request, env, "lexiToday");
     if (limited) return limited;
-    const puzzle = await new LexiPuzzleRepository(env.DB).findPublishedByDate(utcDate());
+    const puzzle = await new LexiPuzzleRepository(env.DB).findPlayableByDate(utcDate());
     if (!puzzle) return NextResponse.json({ error: "puzzle_unavailable" }, { status: 503 });
     return NextResponse.json({ puzzleId: puzzle.id, puzzleDate: puzzle.puzzleDate,
       wordLength: puzzle.wordLength, maxAttempts: puzzle.maxAttempts,

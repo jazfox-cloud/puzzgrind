@@ -2,7 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextResponse } from "next/server";
 import { isJsonObject, JSON_BODY_LIMITS, readJsonBody } from "@/lib/api/request";
 import { limitApiRequest } from "@/lib/api/rate-limit";
-import { LexiHintRepository, LexiPuzzleRepository } from "@/lib/db";
+import { isPlayableLexiPuzzle, LexiHintRepository, LexiPuzzleRepository } from "@/lib/db";
 import { utcDate } from "@/lib/daily/utc";
 import { selectLexiHintLetter } from "@/lib/lexi";
 import { authorizeLexiSession } from "@/lib/security/lexi-session-authorization";
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "already_completed" }, { status: 409 });
     }
     const puzzle = await new LexiPuzzleRepository(env.DB).findById(session.puzzleId);
-    if (!puzzle || puzzle.status !== "published" || puzzle.puzzleDate !== utcDate(new Date(now * 1_000))) {
+    if (!puzzle || !isPlayableLexiPuzzle(puzzle, utcDate(new Date(now * 1_000)))) {
       return NextResponse.json({ error: "session_expired" }, { status: 409 });
     }
     const selected = selectLexiHintLetter({ answer: puzzle.answer, guesses: session.guesses,

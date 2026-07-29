@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const limited = await limitApiRequest(request, env, "lexiSessionStart");
     if (limited) return limited;
     const date = utcDate();
-    const puzzle = await new LexiPuzzleRepository(env.DB).findPublishedByDate(date);
+    const puzzle = await new LexiPuzzleRepository(env.DB).findPlayableByDate(date);
     if (!puzzle) return NextResponse.json({ error: "puzzle_unavailable" }, { status: 503 });
     const now = Math.floor(Date.now() / 1_000);
     const repository = new LexiSessionRepository(env.DB);

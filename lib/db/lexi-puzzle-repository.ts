@@ -10,6 +10,15 @@ const columns = `id, puzzle_date, answer, word_length, max_attempts, status,
 export class LexiPuzzleRepository {
   constructor(private readonly db: D1DatabaseLike) {}
 
+  async findPlayableByDate(date: string): Promise<LexiPuzzle | null> {
+    try {
+      const row = await this.db.prepare(`SELECT ${columns} FROM lexi_puzzles
+        WHERE puzzle_date = ? AND status IN ('published', 'scheduled')
+        ORDER BY status = 'published' DESC LIMIT 1`).bind(date).first<LexiPuzzleRow>();
+      return row ? mapLexiPuzzleRow(row) : null;
+    } catch (error) { throw toDatabaseError(error, "Reading today's playable Lexi puzzle"); }
+  }
+
   async findPublishedByDate(date: string): Promise<LexiPuzzle | null> {
     try {
       const row = await this.db.prepare(`SELECT ${columns} FROM lexi_puzzles
@@ -25,4 +34,8 @@ export class LexiPuzzleRepository {
       return row ? mapLexiPuzzleRow(row) : null;
     } catch (error) { throw toDatabaseError(error, "Reading a Lexi puzzle"); }
   }
+}
+
+export function isPlayableLexiPuzzle(puzzle: LexiPuzzle, today: string): boolean {
+  return puzzle.puzzleDate === today && (puzzle.status === "published" || puzzle.status === "scheduled");
 }

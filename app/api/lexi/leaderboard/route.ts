@@ -2,7 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextResponse } from "next/server";
 import { isJsonObject, JSON_BODY_LIMITS, readJsonBody } from "@/lib/api/request";
 import { limitApiRequest } from "@/lib/api/rate-limit";
-import { LexiLeaderboardRepository, LexiPuzzleRepository } from "@/lib/db";
+import { isPlayableLexiPuzzle, LexiLeaderboardRepository, LexiPuzzleRepository } from "@/lib/db";
 import type { RankedLexiLeaderboardEntry } from "@/lib/db";
 import { utcDate } from "@/lib/daily/utc";
 import { normalizeDisplayName } from "@/lib/leaderboard/display-name";
@@ -30,7 +30,7 @@ async function snapshot(db: CloudflareEnv["DB"], puzzleId: string, puzzleDate: s
 export async function GET(request: Request) {
   try {
     const { env } = getCloudflareContext();
-    const puzzle = await new LexiPuzzleRepository(env.DB).findPublishedByDate(utcDate());
+    const puzzle = await new LexiPuzzleRepository(env.DB).findPlayableByDate(utcDate());
     if (!puzzle) return NextResponse.json({ error: "puzzle_unavailable" }, { status: 503 });
     const limited = await limitApiRequest(request, env, "lexiLeaderboardQuery", puzzle.id);
     if (limited) return limited;
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     const limited = await limitApiRequest(request, env, "lexiLeaderboardSubmit", session.id);
     if (limited) return limited;
     const puzzle = await new LexiPuzzleRepository(env.DB).findById(session.puzzleId);
-    if (!puzzle || puzzle.status !== "published" || puzzle.puzzleDate !== utcDate(new Date(now * 1_000)) ||
+    if (!puzzle || !isPlayableLexiPuzzle(puzzle, utcDate(new Date(now * 1_000))) ||
       session.completedAt === null || session.durationSeconds === null) {
       return NextResponse.json({ error: "session_expired" }, { status: 409 });
     }

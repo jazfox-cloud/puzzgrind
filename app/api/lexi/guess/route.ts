@@ -2,7 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextResponse } from "next/server";
 import { isJsonObject, JSON_BODY_LIMITS, readJsonBody } from "@/lib/api/request";
 import { limitApiRequest } from "@/lib/api/rate-limit";
-import { LexiPuzzleRepository, LexiSessionRepository } from "@/lib/db";
+import { isPlayableLexiPuzzle, LexiPuzzleRepository, LexiSessionRepository } from "@/lib/db";
 import { utcDate } from "@/lib/daily/utc";
 import { determineLexiStatus, evaluateLexiGuess, normalizeValidLexiWord } from "@/lib/lexi";
 import { validLexiGuesses } from "@/lib/lexi/server/lexicon";
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const limited = await limitApiRequest(request, env, "lexiGuess", session.id);
     if (limited) return limited;
     const puzzle = await new LexiPuzzleRepository(env.DB).findById(session.puzzleId);
-    if (!puzzle || puzzle.status !== "published" || puzzle.puzzleDate !== utcDate(new Date(now * 1_000))) {
+    if (!puzzle || !isPlayableLexiPuzzle(puzzle, utcDate(new Date(now * 1_000)))) {
       await new LexiSessionRepository(env.DB).expire(session.id, session.revision, now);
       return NextResponse.json({ error: "session_expired" }, { status: 409 });
     }

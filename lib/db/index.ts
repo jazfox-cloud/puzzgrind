@@ -2,7 +2,7 @@ export type { D1DatabaseLike, D1PreparedStatementLike } from "./d1";
 export { DatabaseError } from "./errors";
 export { LexiHintRepository } from "./lexi-hint-repository";
 export { LexiLeaderboardRepository } from "./lexi-leaderboard-repository";
-export { LexiPuzzleRepository } from "./lexi-puzzle-repository";
+export { isPlayableLexiPuzzle, LexiPuzzleRepository } from "./lexi-puzzle-repository";
 export { LexiSessionRepository } from "./lexi-session-repository";
 export { LexiStatsRepository } from "./lexi-stats-repository";
 export { SudokuHintEventRepository } from "./sudoku-hint-event-repository";
