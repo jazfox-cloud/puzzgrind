@@ -1,0 +1,17 @@
+export const SCHEMA_VERSION: string;
+export const DATABASE: { binding: string; name: string; environment: string; wranglerEnv: string };
+export const DEFINITIONS: Record<string, Record<string, string>>;
+export const SAMPLE_GATES: Record<string, string | number>;
+export const SQL: Record<string, string>;
+export function assertReadOnlySql(sql: string): string;
+export function assertNoAnonymousIds(value: unknown): void;
+export function formatDate(date: Date): string;
+export function parseDate(value: string, name: string): Date;
+export function addDays(value: string, days: number): string;
+export function mostRecentCompleteUtcDay(now?: Date): string;
+export function defaultWindow(now?: Date): { start: string; end: string };
+export function resolveWindow(input: { start?: string | null; end?: string | null; now?: Date }): { start: string; end: string };
+export function rate(numerator: number, denominator: number): number | null;
+export function buildSudokuReport(row: Record<string, unknown>, window: { start: string; end: string }): Record<string, unknown>;
+export function buildLexiReport(row: Record<string, unknown>, window: { start: string; end: string }): Record<string, unknown>;
+export function buildReport(input: { sudokuRow: Record<string, unknown>; lexiRow: Record<string, unknown>; window: { start: string; end: string }; generatedAt: string; source?: string; database?: { name: string }; environment?: string; changedDb?: boolean }): Record<string, unknown>;

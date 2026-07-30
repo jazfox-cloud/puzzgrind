@@ -1,0 +1,27 @@
+{
+  "generated_at": "2026-07-30T00:00:00.000Z",
+  "sudoku": {
+    "created_starts": 19,
+    "first_data_date": "2026-07-12",
+    "last_data_date": "2026-07-29",
+    "no_progress_starts": 4,
+    "meaningful_starts": 15,
+    "wins": 2,
+    "in_progress_sessions": 13,
+    "paused_sessions": 0,
+    "distinct_anonymous_users": 15,
+    "returning_users": 3
+  },
+  "lexi": {
+    "created_starts": 18,
+    "first_data_date": "2026-07-26",
+    "last_data_date": "2026-07-29",
+    "zero_guess_starts": 13,
+    "meaningful_starts": 5,
+    "won": 2,
+    "lost": 2,
+    "in_progress_sessions": 1,
+    "distinct_anonymous_users": 18,
+    "returning_users": 0
+  }
+}
