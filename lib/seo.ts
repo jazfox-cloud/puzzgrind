@@ -89,9 +89,13 @@ export function createRootMetadata(environment: AppEnvironment): Metadata {
     },
     robots: robotsMetadata(environment),
     icons: {
-      icon: [{ url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" }],
+      icon: [
+        { url: "/brand/favicon-32.png?v=3", type: "image/png", sizes: "32x32" },
+        { url: "/brand/favicon-16.png?v=3", type: "image/png", sizes: "16x16" },
+        { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+      ],
       apple: [{ url: "/icons/apple-touch-icon.png", type: "image/png", sizes: "180x180" }],
-      shortcut: ["/favicon.svg"],
+      shortcut: ["/favicon.ico?v=3"],
     },
     manifest: "/manifest.webmanifest",
   };
