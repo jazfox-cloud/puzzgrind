@@ -19,6 +19,13 @@ test("shows the PuzzGrind launch page", async ({ page }) => {
   expect(await page.locator('script[type="application/ld+json"]').textContent()).toContain('"@type":"WebSite"');
 });
 
+test("keeps the Production homepage canonical on query URLs", async ({ page }) => {
+  const response = await page.goto("/?query=params");
+  expect(response?.status()).toBe(200);
+  await expect(page.locator('link[rel="canonical"]')).toHaveCount(1);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://puzzgrind.com/");
+});
+
 test("does not load GA4 before a Production visitor chooses analytics", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Accept analytics" })).toBeVisible();
