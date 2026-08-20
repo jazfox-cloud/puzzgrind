@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       startedAt: now,
       completedAt: null,
       updatedAt: now,
-    });
+    }, env.APP_ENV);
     await new SudokuStatsRepository(db).recordStart(puzzle.puzzleId, now);
     const sessionToken = await createSessionToken({
       sessionId, puzzleId: puzzle.puzzleId, anonymousId, issuedAt: now, nonce: challengeNonce,

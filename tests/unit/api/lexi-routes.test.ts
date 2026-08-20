@@ -91,6 +91,21 @@ describe("Lexi API response and authorization boundaries", () => {
     expect(body).toMatchObject({ restored: false, attemptCount: 0, revision: 0 });
     expect(body).toHaveProperty("token");
     expect(body).not.toHaveProperty("answer");
+    const insert = db.statements.find((statement) => /INSERT OR IGNORE INTO lexi_sessions/u.test(statement.query));
+    expect(insert?.bindings.at(-1)).toBe("test");
+  });
+
+  it("fails closed before inserting a session when APP_ENV is missing", async () => {
+    const db = new FakeD1Database();
+    db.queueFirst(puzzleRow());
+    context.env = { DB: db, RATE_LIMIT_LEXI_START: allow,
+      SESSION_SIGNING_SECRET: "test-secret" } as CloudflareEnv;
+
+    const response = await startSession(post("https://puzzgrind.test/api/lexi/session/start",
+      { anonymousId: sessionRow().anonymous_id }));
+
+    expect(response.status).toBe(503);
+    expect(db.statements.some((statement) => /INSERT OR IGNORE INTO lexi_sessions/u.test(statement.query))).toBe(false);
   });
 
   it("starts a session for today's scheduled puzzle without returning an answer", async () => {

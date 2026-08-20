@@ -2,6 +2,8 @@
 
 TASK-018 adds a read-only reporting layer for PuzzGrind product metrics. It separates Created Start, Meaningful Start, and Terminal Session for Sudoku and Lexi Daily.
 
+Session provenance is fail closed. Migration `0004_session_provenance.sql` preserves all pre-migration rows as `source_environment = 'unknown'`; new session writes require the explicit runtime `APP_ENV`. Production reports include only rows explicitly marked `production`. Historical `unknown` rows remain available in D1 but are excluded from verified product KPI windows rather than being guessed into live traffic.
+
 ## Commands
 
 Historical baseline window:
@@ -34,6 +36,8 @@ Returning users are counted only as aggregates: the same anonymous ID appearing 
 ## Read-only Limitations
 
 Production queries use remote Cloudflare D1 database `puzzgrind-db` with `--env production`. SQL is guarded to allow only `SELECT`/`WITH` and to reject write or schema keywords such as `INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, and `CREATE`. Production runs report `changed_db` from Wrangler metadata.
+
+The first trustworthy comparison requires two adjacent complete observation windows entirely after the provenance migration. Until that cutover window exists, downstream systems must report the metric as `inconclusive`; a partial post-migration count is not a valid before/after comparison.
 
 ## Interpretation
 
