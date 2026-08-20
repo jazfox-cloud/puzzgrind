@@ -1,4 +1,5 @@
 import type { D1DatabaseLike } from "./d1";
+import type { AppEnvironment } from "@/lib/build-environment";
 import { toDatabaseError } from "./errors";
 import { mapSessionRow } from "./row-mappers";
 import type { SessionRow } from "./row-mappers";
@@ -13,12 +14,13 @@ const sessionColumns = `
 export class SudokuSessionRepository {
   constructor(private readonly db: D1DatabaseLike) {}
 
-  async create(session: SudokuSession): Promise<void> {
+  async create(session: SudokuSession, sourceEnvironment?: AppEnvironment): Promise<void> {
+    if (!sourceEnvironment) throw new Error("Session source environment is required");
     try {
       await this.db
         .prepare(`
-          INSERT INTO sudoku_sessions (${sessionColumns})
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO sudoku_sessions (${sessionColumns}, source_environment)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `)
         .bind(
           session.id,
@@ -35,6 +37,7 @@ export class SudokuSessionRepository {
           session.startedAt,
           session.completedAt,
           session.updatedAt,
+          sourceEnvironment,
         )
         .run();
     } catch (error) {

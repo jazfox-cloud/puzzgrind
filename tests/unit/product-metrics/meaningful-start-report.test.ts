@@ -82,6 +82,13 @@ describe("meaningful start product reporting", () => {
     expect(() => assertReadOnlySql("SELECT * FROM x; DROP TABLE x;")).toThrow("forbidden");
   });
 
+  it("queries only explicitly production-provenanced sessions with D1-safe aliases", () => {
+    for (const sql of Object.values(SQL)) {
+      expect(sql).toContain("s.source_environment = 'production'");
+      expect(sql).not.toMatch(/\bAS\s+days\b/iu);
+    }
+  });
+
   it("does not output anonymous IDs", () => {
     expect(() => assertNoAnonymousIds(report)).not.toThrow();
     expect(() => assertNoAnonymousIds({ anonymous_id: "123e4567-e89b-42d3-a456-426614174000" })).toThrow("anonymous ID");

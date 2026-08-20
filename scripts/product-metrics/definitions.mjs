@@ -185,17 +185,19 @@ export const SQL = Object.freeze({
   SUM(CASE WHEN s.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress_sessions,
   SUM(CASE WHEN s.status = 'paused' THEN 1 ELSE 0 END) AS paused_sessions,
   COUNT(DISTINCT s.anonymous_id) AS distinct_anonymous_users,
-  COUNT(DISTINCT CASE WHEN user_days.days >= 2 THEN s.anonymous_id END) AS returning_users
+  COUNT(DISTINCT CASE WHEN user_days.active_days >= 2 THEN s.anonymous_id END) AS returning_users
 FROM sudoku_sessions s
 JOIN sudoku_puzzles p ON p.id = s.puzzle_id
 JOIN (
-  SELECT anonymous_id, COUNT(DISTINCT p2.puzzle_date) AS days
+  SELECT anonymous_id, COUNT(DISTINCT p2.puzzle_date) AS active_days
   FROM sudoku_sessions s2
   JOIN sudoku_puzzles p2 ON p2.id = s2.puzzle_id
   WHERE p2.puzzle_date BETWEEN ? AND ?
+    AND s2.source_environment = 'production'
   GROUP BY anonymous_id
 ) user_days ON user_days.anonymous_id = s.anonymous_id
-WHERE p.puzzle_date BETWEEN ? AND ?;`,
+WHERE p.puzzle_date BETWEEN ? AND ?
+  AND s.source_environment = 'production';`,
   lexi: `SELECT
   COUNT(*) AS created_starts,
   MIN(p.puzzle_date) AS first_data_date,
@@ -206,16 +208,18 @@ WHERE p.puzzle_date BETWEEN ? AND ?;`,
   SUM(CASE WHEN s.status = 'lost' THEN 1 ELSE 0 END) AS lost,
   SUM(CASE WHEN s.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress_sessions,
   COUNT(DISTINCT s.anonymous_id) AS distinct_anonymous_users,
-  COUNT(DISTINCT CASE WHEN user_days.days >= 2 THEN s.anonymous_id END) AS returning_users
+  COUNT(DISTINCT CASE WHEN user_days.active_days >= 2 THEN s.anonymous_id END) AS returning_users
 FROM lexi_sessions s
 JOIN lexi_puzzles p ON p.id = s.puzzle_id
 JOIN (
-  SELECT anonymous_id, COUNT(DISTINCT p2.puzzle_date) AS days
+  SELECT anonymous_id, COUNT(DISTINCT p2.puzzle_date) AS active_days
   FROM lexi_sessions s2
   JOIN lexi_puzzles p2 ON p2.id = s2.puzzle_id
   WHERE p2.puzzle_date BETWEEN ? AND ?
+    AND s2.source_environment = 'production'
   GROUP BY anonymous_id
 ) user_days ON user_days.anonymous_id = s.anonymous_id
-WHERE p.puzzle_date BETWEEN ? AND ?;`,
+WHERE p.puzzle_date BETWEEN ? AND ?
+  AND s.source_environment = 'production';`,
 });
 for (const sql of Object.values(SQL)) assertReadOnlySql(sql);

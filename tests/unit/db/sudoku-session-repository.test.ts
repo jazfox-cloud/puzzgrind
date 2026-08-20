@@ -26,10 +26,19 @@ describe("SudokuSessionRepository", () => {
     const db = new FakeD1Database();
     db.queueRun();
 
-    await new SudokuSessionRepository(db).create(session);
+    await new SudokuSessionRepository(db).create(session, "production");
 
     expect(db.statements[0].bindings[4]).toBe('{"values":[0,1]}');
     expect(db.statements[0].bindings[5]).toBe('[[],[2,3]]');
+    expect(db.statements[0].bindings.at(-1)).toBe("production");
+  });
+
+  it("refuses to create a session without an explicit source environment", async () => {
+    const db = new FakeD1Database();
+    db.queueRun();
+
+    await expect(new SudokuSessionRepository(db).create(session, undefined)).rejects.toThrow("source environment");
+    expect(db.statements).toHaveLength(0);
   });
 
   it("restores a session by anonymous id and puzzle id", async () => {

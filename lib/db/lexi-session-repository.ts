@@ -1,4 +1,5 @@
 import type { LexiGuessResult } from "@/lib/lexi";
+import type { AppEnvironment } from "@/lib/build-environment";
 import type { D1DatabaseLike } from "./d1";
 import { toDatabaseError } from "./errors";
 import { mapLexiSessionRow } from "./lexi-row-mappers";
@@ -34,13 +35,16 @@ export class LexiSessionRepository {
 
   async createOrRestore(input: {
     anonymousId: string; challengeNonce: string; id: string; now: number; puzzleId: string;
+    sourceEnvironment?: AppEnvironment;
   }): Promise<{ created: boolean; session: LexiSession }> {
+    if (!input.sourceEnvironment) throw new Error("Session source environment is required");
     try {
       const result = await this.db.prepare(`INSERT OR IGNORE INTO lexi_sessions (
         id, anonymous_id, puzzle_id, status, guesses_json, attempt_count, hint_count,
-        revision, challenge_nonce, started_at, updated_at
-      ) VALUES (?, ?, ?, 'started', '[]', 0, 0, 0, ?, ?, ?)`)
-        .bind(input.id, input.anonymousId, input.puzzleId, input.challengeNonce, input.now, input.now).run();
+        revision, challenge_nonce, started_at, updated_at, source_environment
+      ) VALUES (?, ?, ?, 'started', '[]', 0, 0, 0, ?, ?, ?, ?)`)
+        .bind(input.id, input.anonymousId, input.puzzleId, input.challengeNonce, input.now, input.now,
+          input.sourceEnvironment).run();
       const session = await this.findByAnonymousPuzzle(input.anonymousId, input.puzzleId);
       if (!session) throw new Error("Lexi session insert could not be read");
       return { created: (result.meta.changes ?? 0) > 0, session };

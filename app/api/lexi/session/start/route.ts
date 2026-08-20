@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const repository = new LexiSessionRepository(env.DB);
     const nonce = crypto.randomUUID();
     const result = await repository.createOrRestore({ anonymousId, challengeNonce: nonce,
-      id: crypto.randomUUID(), now, puzzleId: puzzle.id });
+      id: crypto.randomUUID(), now, puzzleId: puzzle.id, sourceEnvironment: env.APP_ENV });
     const session = result.created ? result.session : await repository.refreshNonce(result.session.id, nonce, now);
     if (!session) throw new Error("Lexi session unavailable after start");
     const expiresAt = Math.floor(new Date(nextUtcMidnight(date)).getTime() / 1_000);
