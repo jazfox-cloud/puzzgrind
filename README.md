@@ -1,5 +1,60 @@
 # PuzzGrind
 
+Daily logic and word puzzles with explanations that help you learn as you play. Choose a shared Sudoku or a five-letter word challenge; no account is required.
+
+**[Play PuzzGrind](https://puzzgrind.com/)**
+
+## Choose today's puzzle
+
+| Game | What to expect | Play |
+| --- | --- | --- |
+| Daily Sudoku | One shared Medium grid, candidate notes, undo and logical hints that unfold one step at a time. | [Play Daily Sudoku](https://puzzgrind.com/sudoku) |
+| Lexi Daily | One shared five-letter word, up to six valid guesses and feedback that accounts for repeated letters. | [Play Lexi Daily](https://puzzgrind.com/games/lexi-daily) |
+
+Daily challenges follow the **UTC date**, which may differ from your local date.
+
+## How to play
+
+### Daily Sudoku
+
+Fill each row, column and 3×3 box with the digits 1–9 without repeats. Select an empty cell, then choose a number. Use **Notes** to record candidates and **Undo** to reverse an entry.
+
+When you need help, **Get a hint** starts with a logical nudge. **Show More** and **Show the Cell** reveal more detail; **Apply Move** lets you choose whether to use the suggested move. The hint logic includes naked singles, hidden singles and locked candidates.
+
+### Lexi Daily
+
+Guess the five-letter word in up to six accepted attempts. Invalid words and duplicate guesses do not consume an attempt.
+
+- **Blue / circle:** the letter is in the correct position.
+- **Orange / diamond:** the letter is present elsewhere.
+- **Gray / dash:** no unmatched occurrence of that letter remains in the answer.
+
+After two valid guesses, you may use one hint if an undiscovered answer letter remains. It reveals a letter, not its position. Hint use affects leaderboard ranking. Streaks are stored in this browser rather than synced through an account.
+
+## Repeated-letter example
+
+Suppose the answer is **APPLE** and the guess is **ALLEY**. This is a teaching example, not today's answer.
+
+| Guess position | Letter | Feedback | Why |
+| --- | --- | --- | --- |
+| 1 | A | Correct | A matches the first position. |
+| 2 | L | Present | The answer has one L, in another position. |
+| 3 | L | Absent | The answer's only L has already been matched. |
+| 4 | E | Present | E is in the answer, at another position. |
+| 5 | Y | Absent | Y is not in the answer. |
+
+The evaluator matches correct positions first, then uses the remaining letter counts. In the repository, `evaluateLexiGuess("apple", "alley")` returns `["correct", "present", "absent", "present", "absent"]`.
+
+## Explore the implementation
+
+- `lib/sudoku/board.ts`, `validator.ts` and `solver.ts` — Sudoku board utilities, validation and solving.
+- `lib/sudoku/techniques.ts` and `hints.ts` — logical steps and progressive explanations.
+- `lib/lexi/evaluation.ts` — position-aware, count-aware letter feedback.
+- `lib/daily/utc.ts` — shared UTC-day boundaries.
+- [Third-party notices](THIRD_PARTY_NOTICES.md) — word-list attribution and upstream permissions.
+
+## Project background
+
 PuzzGrind is an English-language Daily Puzzle Platform. Phase 0 delivered Explainable Daily Sudoku;
 the approved Phase 1 adds Lexi Daily while preserving the Sudoku production baseline.
 
