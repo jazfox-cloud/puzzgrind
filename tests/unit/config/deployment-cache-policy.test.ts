@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import nextConfig from "../../../next.config";
 
-const SAFE_ROUTES = ["/", "/games/mini-sudoku", "/privacy", "/robots.txt", "/sitemap.xml"];
+const SAFE_ROUTES = ["/", "/games/mini-sudoku", "/guides/6x6-sudoku-single-candidate", "/guides/6x6-sudoku-conflicts", "/privacy", "/robots.txt", "/sitemap.xml"];
 
 describe("deployment cache isolation", () => {
   it("bypasses shared CDN caching for deployment-sensitive routes", async () => {
