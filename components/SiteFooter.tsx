@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const footerLinks = [
   { href: "/", label: "Home" },
+  { href: "/guides", label: "Articles" },
   { href: "/sudoku", label: "Daily Sudoku" },
   { href: "/games/mini-sudoku", label: "Mini Sudoku" },
   { href: "/games/lexi-daily", label: "Lexi Daily" },

@@ -69,8 +69,11 @@ describe("SEO foundation", () => {
     expect(sitemap().map(({ url }) => url)).toEqual([
       "https://puzzgrind.com/",
       "https://puzzgrind.com/games/mini-sudoku",
+      "https://puzzgrind.com/guides",
       "https://puzzgrind.com/guides/6x6-sudoku-single-candidate",
       "https://puzzgrind.com/guides/6x6-sudoku-conflicts",
+      "https://puzzgrind.com/guides/sudoku-single-candidate",
+      "https://puzzgrind.com/guides/lexi-repeated-letters",
       "https://puzzgrind.com/sudoku",
       "https://puzzgrind.com/games/lexi-daily",
       "https://puzzgrind.com/privacy",

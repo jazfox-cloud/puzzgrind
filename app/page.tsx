@@ -1,3 +1,4 @@
+import { ArticlesLink } from "@/components/ArticlesLink";
 import Link from "next/link";
 
 import { JsonLd } from "@/components/JsonLd";
@@ -20,7 +21,7 @@ export default function HomePage() {
       <JsonLd data={WEBSITE_JSON_LD} />
       <header className="flex items-center justify-between border-b border-emerald-950/15 pb-5">
         <div className="text-xl font-black tracking-[-0.04em]">PuzzGrind</div>
-        <Link className="rounded-full border border-emerald-950/15 bg-white/60 px-4 py-2 text-sm font-bold" href="/sudoku">Play today</Link>
+        <nav aria-label="Main navigation" className="flex items-center gap-1"><ArticlesLink /><Link className="rounded-full border border-emerald-950/15 bg-white/60 px-4 py-2 text-sm font-bold" href="/sudoku">Play today</Link></nav>
       </header>
 
       <section className="grid flex-1 items-center gap-12 py-20 lg:grid-cols-[1.1fr_0.9fr]">
