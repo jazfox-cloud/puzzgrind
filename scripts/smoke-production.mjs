@@ -54,7 +54,7 @@ async function assertHttpsRedirect(path) {
 
 const gitSha = resolveGitSha();
 for (const path of ["/", "/sudoku", "/privacy"]) await assertHttpsRedirect(path);
-for (const [path, canonical] of [["/", `${ORIGIN}/`], ["/privacy", `${ORIGIN}/privacy`]]) {
+for (const [path, canonical] of [["/", `${ORIGIN}/`], ["/games/mini-sudoku", `${ORIGIN}/games/mini-sudoku`], ["/privacy", `${ORIGIN}/privacy`]]) {
   const standard = await read(path);
   const busted = await read(path, gitSha);
   if (standard.response.status !== 200 || busted.response.status !== 200) fail(path, `returned ${standard.response.status}/${busted.response.status}`);
@@ -78,7 +78,7 @@ if (/^Disallow: \/$/m.test(robots.body)) fail("/robots.txt", "blocks the entire 
 const sitemap = await read("/sitemap.xml");
 if (sitemap.response.status !== 200) fail("/sitemap.xml", `returned ${sitemap.response.status}`);
 assertDeploymentSafeCache(sitemap.response, "/sitemap.xml");
-for (const url of [`${ORIGIN}/`, `${ORIGIN}/sudoku`, `${ORIGIN}/games/lexi-daily`, `${ORIGIN}/privacy`]) {
+for (const url of [`${ORIGIN}/`, `${ORIGIN}/sudoku`, `${ORIGIN}/games/mini-sudoku`, `${ORIGIN}/games/lexi-daily`, `${ORIGIN}/privacy`]) {
   if (!sitemap.body.includes(`<loc>${url}</loc>`)) fail("/sitemap.xml", `is missing ${url}`);
 }
 

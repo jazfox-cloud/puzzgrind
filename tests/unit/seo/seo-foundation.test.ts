@@ -65,9 +65,10 @@ describe("SEO foundation", () => {
     expect(createRobots("staging")).toEqual({ rules: { userAgent: "*", disallow: "/" } });
   });
 
-  it("limits the sitemap to the four public Production URLs", () => {
+  it("lists the public Production URLs", () => {
     expect(sitemap().map(({ url }) => url)).toEqual([
       "https://puzzgrind.com/",
+      "https://puzzgrind.com/games/mini-sudoku",
       "https://puzzgrind.com/sudoku",
       "https://puzzgrind.com/games/lexi-daily",
       "https://puzzgrind.com/privacy",
