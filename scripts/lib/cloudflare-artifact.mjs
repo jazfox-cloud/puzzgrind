@@ -7,7 +7,7 @@ export const ARTIFACT_ENVIRONMENTS = ["preview", "staging", "production"];
 export const MARKER_PATH = "cdn-cgi/puzzgrind/build-environment.json";
 const CACHE_ROOT = "cdn-cgi/_next_cache";
 const CACHE_FILES = ["index.cache", "privacy.cache", "robots.txt.cache", "sitemap.xml.cache"];
-const DEPLOYMENT_SENSITIVE_ROUTES = ["/", "/games/mini-sudoku", "/guides", "/guides/6x6-sudoku-single-candidate", "/guides/6x6-sudoku-conflicts", "/guides/sudoku-single-candidate", "/guides/lexi-repeated-letters", "/privacy", "/robots.txt", "/sitemap.xml"];
+const DEPLOYMENT_SENSITIVE_ROUTES = ["/", "/games/mini-sudoku", "/guides", "/guides/6x6-sudoku-single-candidate", "/guides/6x6-sudoku-conflicts", "/guides/6x6-sudoku-notes", "/guides/6x6-sudoku-hidden-single", "/guides/sudoku-single-candidate", "/guides/lexi-repeated-letters", "/privacy", "/robots.txt", "/sitemap.xml"];
 const HTML_CACHE_CONTROL = "public, max-age=0, must-revalidate";
 const CDN_CACHE_CONTROL = "no-store";
 const STATIC_ASSET_CACHE_CONTROL = "public, max-age=31536000, immutable";
@@ -141,7 +141,7 @@ export function validateArtifact({ environment, expectedGitSha, root = process.c
     if (home.includes("noindex") || privacy.includes("noindex")) fail(paths["index.cache"], "Production page contains noindex");
     for (const rule of ["Allow: /", "Disallow: /api/", "Disallow: /sudoku/share/", "Sitemap: https://puzzgrind.com/sitemap.xml"]) if (!robots.includes(rule)) fail(paths["robots.txt.cache"], `missing ${rule}`);
     if (/^Disallow: \/$/m.test(robots)) fail(paths["robots.txt.cache"], "Production robots blocks the entire site");
-    for (const url of ["https://puzzgrind.com/", "https://puzzgrind.com/sudoku", "https://puzzgrind.com/games/mini-sudoku", "https://puzzgrind.com/guides", "https://puzzgrind.com/guides/6x6-sudoku-single-candidate", "https://puzzgrind.com/guides/6x6-sudoku-conflicts", "https://puzzgrind.com/guides/sudoku-single-candidate", "https://puzzgrind.com/guides/lexi-repeated-letters", "https://puzzgrind.com/games/lexi-daily", "https://puzzgrind.com/privacy"]) if (!sitemap.includes(`<loc>${url}</loc>`)) fail(paths["sitemap.xml.cache"], `missing ${url}`);
+    for (const url of ["https://puzzgrind.com/", "https://puzzgrind.com/sudoku", "https://puzzgrind.com/games/mini-sudoku", "https://puzzgrind.com/guides", "https://puzzgrind.com/guides/6x6-sudoku-single-candidate", "https://puzzgrind.com/guides/6x6-sudoku-conflicts", "https://puzzgrind.com/guides/6x6-sudoku-notes", "https://puzzgrind.com/guides/6x6-sudoku-hidden-single", "https://puzzgrind.com/guides/sudoku-single-candidate", "https://puzzgrind.com/guides/lexi-repeated-letters", "https://puzzgrind.com/games/lexi-daily", "https://puzzgrind.com/privacy"]) if (!sitemap.includes(`<loc>${url}</loc>`)) fail(paths["sitemap.xml.cache"], `missing ${url}`);
   } else {
     if (home.includes('rel="canonical"') || privacy.includes('rel="canonical"')) fail(paths["index.cache"], `${environment} contains canonical`);
     if (home.includes('property="og:url"') || privacy.includes('property="og:url"')) fail(paths["index.cache"], `${environment} contains og:url`);

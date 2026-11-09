@@ -22,7 +22,7 @@ function fixture(environment: "production" | "preview" | "staging") {
     'var CACHE_DIR = "cdn-cgi/_next_cache"; var NAME = "cf-static-assets-incremental-cache";',
   );
   writeFileSync(join(root, ".next", "routes-manifest.json"), JSON.stringify({
-    headers: ["/", "/games/mini-sudoku", "/guides", "/guides/6x6-sudoku-single-candidate", "/guides/6x6-sudoku-conflicts", "/guides/sudoku-single-candidate", "/guides/lexi-repeated-letters", "/privacy", "/robots.txt", "/sitemap.xml"].map((source) => ({
+    headers: ["/", "/games/mini-sudoku", "/guides", "/guides/6x6-sudoku-single-candidate", "/guides/6x6-sudoku-conflicts", "/guides/6x6-sudoku-notes", "/guides/6x6-sudoku-hidden-single", "/guides/sudoku-single-candidate", "/guides/lexi-repeated-letters", "/privacy", "/robots.txt", "/sitemap.xml"].map((source) => ({
       source,
       headers: [
         { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
@@ -36,7 +36,7 @@ function fixture(environment: "production" | "preview" | "staging") {
   const home = production ? '<link href="https://puzzgrind.com/" rel="canonical"/><meta content="https://puzzgrind.com/" property="og:url"/>' : '<meta name="robots" content="noindex,nofollow"/>';
   const privacy = production ? '<link rel="canonical" href="https://puzzgrind.com/privacy"/>' : '<meta name="robots" content="noindex,nofollow"/>';
   const robots = production ? "User-Agent: *\nAllow: /\nDisallow: /api/\nDisallow: /sudoku/share/\nSitemap: https://puzzgrind.com/sitemap.xml\n" : "User-Agent: *\nDisallow: /\n";
-  const sitemap = '<urlset><url><loc>https://puzzgrind.com/</loc></url><url><loc>https://puzzgrind.com/sudoku</loc></url><url><loc>https://puzzgrind.com/games/mini-sudoku</loc></url><url><loc>https://puzzgrind.com/guides</loc></url><url><loc>https://puzzgrind.com/guides/6x6-sudoku-single-candidate</loc></url><url><loc>https://puzzgrind.com/guides/6x6-sudoku-conflicts</loc></url><url><loc>https://puzzgrind.com/guides/sudoku-single-candidate</loc></url><url><loc>https://puzzgrind.com/guides/lexi-repeated-letters</loc></url><url><loc>https://puzzgrind.com/games/lexi-daily</loc></url><url><loc>https://puzzgrind.com/privacy</loc></url></urlset>';
+  const sitemap = '<urlset><url><loc>https://puzzgrind.com/</loc></url><url><loc>https://puzzgrind.com/sudoku</loc></url><url><loc>https://puzzgrind.com/games/mini-sudoku</loc></url><url><loc>https://puzzgrind.com/guides</loc></url><url><loc>https://puzzgrind.com/guides/6x6-sudoku-single-candidate</loc></url><url><loc>https://puzzgrind.com/guides/6x6-sudoku-conflicts</loc></url><url><loc>https://puzzgrind.com/guides/6x6-sudoku-notes</loc></url><url><loc>https://puzzgrind.com/guides/6x6-sudoku-hidden-single</loc></url><url><loc>https://puzzgrind.com/guides/sudoku-single-candidate</loc></url><url><loc>https://puzzgrind.com/guides/lexi-repeated-letters</loc></url><url><loc>https://puzzgrind.com/games/lexi-daily</loc></url><url><loc>https://puzzgrind.com/privacy</loc></url></urlset>';
   for (const [name, value] of [["index.cache", { html: home }], ["privacy.cache", { html: privacy }], ["robots.txt.cache", { body: robots }], ["sitemap.xml.cache", { body: sitemap }]] as const) writeFileSync(join(root, ".open-next", "cache", id, name), JSON.stringify(value));
   finalizeArtifact({ environment, gitSha: SHA, root });
   return root;

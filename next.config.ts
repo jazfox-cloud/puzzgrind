@@ -16,7 +16,7 @@ process.env.BUILD_APP_ENV = buildAppEnvironment;
 
 const nextConfig: NextConfig = {
   async headers() {
-    return ["/", "/games/mini-sudoku", "/guides", "/guides/6x6-sudoku-single-candidate", "/guides/6x6-sudoku-conflicts", "/guides/sudoku-single-candidate", "/guides/lexi-repeated-letters", "/privacy", "/robots.txt", "/sitemap.xml"].map((source) => ({
+    return ["/", "/games/mini-sudoku", "/guides", "/guides/6x6-sudoku-single-candidate", "/guides/6x6-sudoku-conflicts", "/guides/6x6-sudoku-notes", "/guides/6x6-sudoku-hidden-single", "/guides/sudoku-single-candidate", "/guides/lexi-repeated-letters", "/privacy", "/robots.txt", "/sitemap.xml"].map((source) => ({
       source,
       headers: deploymentSensitiveCacheHeaders,
     }));
