@@ -11,6 +11,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: siteUrl("/guides/6x6-sudoku-conflicts"), changeFrequency: "monthly", priority: 0.6 },
     { url: siteUrl("/guides/6x6-sudoku-notes"), changeFrequency: "monthly", priority: 0.6 },
     { url: siteUrl("/guides/6x6-sudoku-hidden-single"), changeFrequency: "monthly", priority: 0.6 },
+    { url: siteUrl("/guides/6x6-sudoku-naked-pairs"), changeFrequency: "monthly", priority: 0.6 },
+    { url: siteUrl("/guides/6x6-sudoku-box-line"), changeFrequency: "monthly", priority: 0.6 },
     { url: siteUrl("/guides/sudoku-single-candidate"), changeFrequency: "monthly", priority: 0.6 },
     { url: siteUrl("/guides/lexi-repeated-letters"), changeFrequency: "monthly", priority: 0.6 },
     { url: siteUrl("/sudoku"), changeFrequency: "daily", priority: 0.9 },

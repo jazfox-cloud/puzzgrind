@@ -14,6 +14,8 @@ const categories = [
     { href: "/guides/6x6-sudoku-conflicts", title: "Why Is My 6×6 Sudoku Answer Marked as a Conflict?", description: "Learn to spot row, column and box conflicts and recover from mistakes." },
     { href: "/guides/6x6-sudoku-notes", title: "How to Use Notes in 6×6 Sudoku", description: "Track candidates and remove outdated notes with a worked example." },
     { href: "/guides/6x6-sudoku-hidden-single", title: "Find a Hidden Single in 6×6 Sudoku", description: "Find the only position for a number within a box." },
+    { href: "/guides/6x6-sudoku-naked-pairs", title: "How to Find a Naked Pair in 6×6 Sudoku", description: "Use a pair of candidates to eliminate possibilities in a column." },
+    { href: "/guides/6x6-sudoku-box-line", title: "Use Box-Line Elimination in 6×6 Sudoku", description: "Use the connection between a box and a column to find a move." },
   ] },
   { name: "Daily Sudoku", kind: "Logic", gameHref: "/sudoku", articles: [
     { href: "/guides/sudoku-single-candidate", title: "How to Find a Single Candidate in 9×9 Sudoku", description: "Use a worked example to find a number without guessing." },

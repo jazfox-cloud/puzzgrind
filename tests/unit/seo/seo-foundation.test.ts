@@ -74,6 +74,8 @@ describe("SEO foundation", () => {
       "https://puzzgrind.com/guides/6x6-sudoku-conflicts",
       "https://puzzgrind.com/guides/6x6-sudoku-notes",
       "https://puzzgrind.com/guides/6x6-sudoku-hidden-single",
+      "https://puzzgrind.com/guides/6x6-sudoku-naked-pairs",
+      "https://puzzgrind.com/guides/6x6-sudoku-box-line",
       "https://puzzgrind.com/guides/sudoku-single-candidate",
       "https://puzzgrind.com/guides/lexi-repeated-letters",
       "https://puzzgrind.com/sudoku",
