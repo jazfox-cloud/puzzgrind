@@ -33,7 +33,7 @@ export default function HomePage() {
             Play smarter, one puzzle at a time.
           </h1>
           <p className="mt-7 max-w-xl text-lg leading-8 text-[var(--ink-soft)]">
-            Play a shared daily Sudoku or word puzzle, or take a quick break with Mini Sudoku. No account required.
+            Play a shared daily Sudoku, Nonogram, or word puzzle, or take a quick break with Mini Sudoku. No account required.
           </p>
           <a className="mt-9 inline-flex rounded-full bg-emerald-950 px-6 py-3 font-bold text-white transition hover:bg-emerald-800 focus:outline-4 focus:outline-amber-400" href="#daily-games">Choose a puzzle</a>
         </div>
@@ -61,6 +61,7 @@ export default function HomePage() {
           <article className="rounded-3xl border border-emerald-950/15 bg-white/75 p-6 shadow-lg shadow-emerald-950/5"><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black uppercase text-emerald-900">Logic</span><h3 className="mt-5 text-3xl font-black">Daily Sudoku</h3><p className="mt-3 leading-7 text-[var(--ink-soft)]">A shared Medium grid with notes, recovery, and hints that explain the next logical move.</p><GameCardLink className="mt-6 inline-flex rounded-full bg-emerald-950 px-5 py-3 font-black text-white" gameId="sudoku" href="/sudoku">Play Daily Sudoku</GameCardLink></article>
           <article className="rounded-3xl border border-amber-950/15 bg-amber-50/80 p-6 shadow-lg shadow-amber-950/5"><span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black uppercase text-amber-900">Practice</span><h3 className="mt-5 text-3xl font-black">Mini Sudoku</h3><p className="mt-3 leading-7 text-[var(--ink-soft)]">A smaller 6×6 grid with notes and hints. Play 30 practice puzzles at your own pace.</p><Link className="mt-6 inline-flex rounded-full bg-emerald-950 px-5 py-3 font-black text-white" href="/games/mini-sudoku">Play Mini Sudoku</Link></article>
           <article className="rounded-3xl border border-blue-950/15 bg-blue-50/80 p-6 shadow-lg shadow-blue-950/5"><span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-black uppercase text-orange-900">Words</span><h3 className="mt-5 text-3xl font-black">Lexi Daily</h3><p className="mt-3 leading-7 text-[var(--ink-soft)]">Deduce one shared five-letter word in six valid guesses, with careful repeated-letter feedback.</p><GameCardLink className="mt-6 inline-flex rounded-full bg-blue-950 px-5 py-3 font-black text-white" gameId="lexi_daily" href="/games/lexi-daily">Play Lexi Daily</GameCardLink></article>
+          <article className="rounded-3xl border border-emerald-950/15 bg-white/75 p-6 shadow-lg shadow-emerald-950/5"><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black uppercase text-emerald-900">Picture</span><h3 className="mt-5 text-3xl font-black">Daily Nonogram</h3><p className="mt-3 leading-7 text-[var(--ink-soft)]">Fill the shared picture for today from the row and column numbers. A 5×5 or a 10×10, saved in this browser.</p><Link className="mt-6 inline-flex rounded-full bg-emerald-950 px-5 py-3 font-black text-white" href="/games/nonogram">Play Daily Nonogram</Link></article>
         </div>
       </section>
 

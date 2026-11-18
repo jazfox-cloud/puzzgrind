@@ -306,7 +306,7 @@ test("keeps the launch page and game within a mobile viewport", async ({ page })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-test("serves Production robots and the four-URL sitemap", async ({ request }) => {
+test("serves Production robots and the public sitemap", async ({ request }) => {
   const robots = await request.get("/robots.txt");
   expect(robots.status()).toBe(200);
   const robotsText = await robots.text();
@@ -318,10 +318,11 @@ test("serves Production robots and the four-URL sitemap", async ({ request }) =>
   const sitemap = await request.get("/sitemap.xml");
   expect(sitemap.status()).toBe(200);
   const sitemapText = await sitemap.text();
-  expect(sitemapText.match(/<loc>/g)).toHaveLength(4);
+  expect(sitemapText.match(/<loc>/g)).toHaveLength(15);
   expect(sitemapText).toContain("<loc>https://puzzgrind.com/</loc>");
   expect(sitemapText).toContain("<loc>https://puzzgrind.com/sudoku</loc>");
   expect(sitemapText).toContain("<loc>https://puzzgrind.com/games/lexi-daily</loc>");
+  expect(sitemapText).toContain("<loc>https://puzzgrind.com/games/nonogram</loc>");
   expect(sitemapText).toContain("<loc>https://puzzgrind.com/privacy</loc>");
   expect(sitemapText).not.toContain("/api/");
   expect(sitemapText).not.toContain("/share/");

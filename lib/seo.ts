@@ -11,6 +11,12 @@ export const HOME_SEO = {
   path: "/",
 } as const;
 
+export const NONOGRAM_SEO = {
+  title: "Daily Nonogram — Picture Logic Puzzle",
+  description: "Fill today's shared Nonogram from the row and column numbers. Play a 5×5 or 10×10 puzzle with undo, a timer, and progress saved in this browser.",
+  path: "/games/nonogram",
+} as const;
+
 export const LEXI_SEO = {
   title: "Lexi Daily — Five-Letter Word Puzzle",
   description: "Deduce today's shared five-letter word in six guesses with repeated-letter feedback, one optional hint, and an anonymous daily leaderboard.",
@@ -45,6 +51,16 @@ export const SUDOKU_JSON_LD = {
   name: "PuzzGrind Daily Sudoku",
   url: siteUrl("/sudoku"),
   description: SUDOKU_SEO.description,
+  applicationCategory: "GameApplication",
+  operatingSystem: "Web",
+} as const;
+
+export const NONOGRAM_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "PuzzGrind Daily Nonogram",
+  url: siteUrl(NONOGRAM_SEO.path),
+  description: NONOGRAM_SEO.description,
   applicationCategory: "GameApplication",
   operatingSystem: "Web",
 } as const;

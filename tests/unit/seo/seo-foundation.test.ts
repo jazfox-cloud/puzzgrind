@@ -14,6 +14,8 @@ import {
   HOME_SEO,
   LEXI_JSON_LD,
   LEXI_SEO,
+  NONOGRAM_JSON_LD,
+  NONOGRAM_SEO,
   NOINDEX_ROBOTS,
   PRIVACY_SEO,
   serializeJsonLd,
@@ -45,6 +47,7 @@ describe("SEO foundation", () => {
     expect(sudoku.openGraph?.url).toBe("https://puzzgrind.com/sudoku");
     expect(privacy.alternates?.canonical).toBe("https://puzzgrind.com/privacy");
     expect(lexi.alternates?.canonical).toBe("https://puzzgrind.com/games/lexi-daily");
+    expect(createPageMetadata(NONOGRAM_SEO, "production").alternates?.canonical).toBe("https://puzzgrind.com/games/nonogram");
     expect(home.twitter).toMatchObject({ card: "summary_large_image" });
   });
 
@@ -69,6 +72,7 @@ describe("SEO foundation", () => {
     expect(sitemap().map(({ url }) => url)).toEqual([
       "https://puzzgrind.com/",
       "https://puzzgrind.com/games/mini-sudoku",
+      "https://puzzgrind.com/games/nonogram",
       "https://puzzgrind.com/guides",
       "https://puzzgrind.com/guides/6x6-sudoku-single-candidate",
       "https://puzzgrind.com/guides/6x6-sudoku-conflicts",
@@ -93,6 +97,7 @@ describe("SEO foundation", () => {
       operatingSystem: "Web",
     });
     expect(LEXI_JSON_LD).toMatchObject({ "@type": "WebApplication", applicationCategory: "GameApplication" });
+    expect(NONOGRAM_JSON_LD).toMatchObject({ "@type": "WebApplication", applicationCategory: "GameApplication", url: "https://puzzgrind.com/games/nonogram" });
     expect(serializeJsonLd({ value: "</script>" })).not.toContain("<");
     expect(renderToStaticMarkup(createElement(JsonLd, { data: WEBSITE_JSON_LD }))).toContain("application/ld+json");
   });
