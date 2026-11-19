@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { puzzleForDate } from "@/lib/nonogram/calendar";
 import { createState, paintCell, tick } from "@/lib/nonogram/game";
 import { FIVE_BY_FIVE } from "@/lib/nonogram/puzzles";
-import { NONOGRAM_SAVE_KEY, loadNonogram, loadPreferredSize, parsePuzzleSave, saveNonogram } from "@/lib/nonogram/storage";
+import { NONOGRAM_SAVE_KEY, browserNonogramStorage, loadNonogram, loadPreferredSize, parsePuzzleSave, removeNonogramSave, saveNonogram } from "@/lib/nonogram/storage";
 
 function memory() {
   const values = new Map<string, string>();
@@ -17,8 +17,8 @@ describe("Nonogram local progress", () => {
     const state = tick(paintCell(createState(puzzle.solution.length), 0, "fill", puzzle.solution));
     saveNonogram(storage, puzzle.id, state, 10);
     expect(storage.values.get(NONOGRAM_SAVE_KEY)).not.toContain("solution");
-    expect(loadPreferredSize(storage)).toBe(10);
-    expect(loadNonogram(storage, puzzle.id, puzzle.solution)).toEqual(state);
+    expect(loadPreferredSize(storage)).toEqual({ available: true, size: 10 });
+    expect(loadNonogram(storage, puzzle.id, puzzle.solution)).toEqual({ available: true, state });
   });
 
   it("keeps another day's puzzle when today's progress is replaced", () => {
@@ -30,9 +30,11 @@ describe("Nonogram local progress", () => {
     saveNonogram(storage, today.id, todayState, 5);
     const tomorrowState = paintCell(createState(tomorrow.solution.length), 1, "fill", tomorrow.solution);
     saveNonogram(storage, tomorrow.id, tomorrowState, 5);
-    expect(loadNonogram(storage, today.id, today.solution)?.cells[0]).toBe("cross");
-    expect(loadNonogram(storage, tomorrow.id, tomorrow.solution)?.cells[1]).toBe("fill");
-    expect(loadNonogram(storage, "missing", today.solution)).toBeNull();
+    const todayLoaded = loadNonogram(storage, today.id, today.solution);
+    const tomorrowLoaded = loadNonogram(storage, tomorrow.id, tomorrow.solution);
+    expect(todayLoaded.available && todayLoaded.state?.cells[0]).toBe("cross");
+    expect(tomorrowLoaded.available && tomorrowLoaded.state?.cells[1]).toBe("fill");
+    expect(loadNonogram(storage, "missing", today.solution)).toEqual({ available: true, state: null });
   });
 
   it("rejects corrupt progress and recomputes completion from the cells", () => {
@@ -46,7 +48,45 @@ describe("Nonogram local progress", () => {
     expect(unfinished?.completed).toBe(false);
     const storage = memory();
     storage.setItem(NONOGRAM_SAVE_KEY, "{");
-    expect(loadNonogram(storage, "any", solution)).toBeNull();
-    expect(loadPreferredSize(storage)).toBe(5);
+    expect(loadNonogram(storage, "any", solution)).toEqual({ available: true, state: null });
+    expect(loadPreferredSize(storage)).toEqual({ available: true, size: 5 });
+    for (const raw of ["null", "[]", "\"nope\"", JSON.stringify({ version: 1 })]) {
+      storage.setItem(NONOGRAM_SAVE_KEY, raw);
+      expect(loadNonogram(storage, "any", solution)).toEqual({ available: true, state: null });
+    }
+  });
+
+  it("keeps playing when getItem, setItem, or removeItem throws", () => {
+    const solution = [1, 0];
+    const denied = {
+      getItem: () => { throw new DOMException("denied", "SecurityError"); },
+      setItem: () => { throw new DOMException("denied", "SecurityError"); },
+      removeItem: () => { throw new DOMException("denied", "SecurityError"); },
+    };
+    expect(loadNonogram(denied, "puzzle", solution)).toEqual({ available: false });
+    expect(loadPreferredSize(denied)).toEqual({ available: false });
+    expect(saveNonogram(denied, "puzzle", createState(2), 5)).toBe(false);
+    expect(removeNonogramSave(denied)).toBe(false);
+
+    const values = new Map<string, string>([[NONOGRAM_SAVE_KEY, "{"]]);
+    const writeDenied = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: () => { throw new DOMException("denied", "SecurityError"); },
+      removeItem: () => { throw new DOMException("denied", "SecurityError"); },
+    };
+    expect(saveNonogram(writeDenied, "puzzle", createState(2), 5)).toBe(false);
+    expect(values.get(NONOGRAM_SAVE_KEY)).toBe("{");
+    expect(removeNonogramSave(writeDenied)).toBe(false);
+    expect(removeNonogramSave({ getItem: () => null, setItem: () => undefined })).toBe(false);
+  });
+
+  it("returns null when the localStorage object itself is denied", () => {
+    const descriptor = Object.getOwnPropertyDescriptor(window, "localStorage");
+    Object.defineProperty(window, "localStorage", { configurable: true, get() { throw new DOMException("denied", "SecurityError"); } });
+    try {
+      expect(browserNonogramStorage()).toBeNull();
+    } finally {
+      if (descriptor) Object.defineProperty(window, "localStorage", descriptor);
+    }
   });
 });

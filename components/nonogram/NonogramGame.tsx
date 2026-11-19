@@ -5,19 +5,34 @@ import { Fragment, useEffect, useRef, useState, type KeyboardEvent, type Pointer
 import { bankFor, puzzleForDate, puzzleNumber } from "@/lib/nonogram/calendar";
 import { utcDate } from "@/lib/daily/utc";
 import { createState, formatDuration, markForToggle, paintCell, redo, resetState, setTool, tick, undo, type Mark, type NonogramState, type Tool } from "@/lib/nonogram/game";
-import { loadNonogram, loadPreferredSize, saveNonogram } from "@/lib/nonogram/storage";
+import { browserNonogramStorage, loadNonogram, loadPreferredSize, saveNonogram } from "@/lib/nonogram/storage";
 import type { NonogramPuzzle, NonogramSize } from "@/lib/nonogram/puzzles";
 
 type View = { date: string; size: NonogramSize; puzzle: NonogramPuzzle; game: NonogramState };
 
-function browserStorage() {
-  try { return window.localStorage; } catch { return null; }
+function freshView(date: string, size: NonogramSize, puzzle: NonogramPuzzle): View {
+  return { date, size, puzzle, game: createState(puzzle.solution.length) };
 }
 
-function loadView(date: string, size: NonogramSize, storage: Storage | null): View {
+function readBoard(date: string, size: NonogramSize, memory: Map<string, NonogramState>): { view: View; unavailable: boolean } {
   const puzzle = puzzleForDate(size, date);
-  const game = storage ? loadNonogram(storage, puzzle.id, puzzle.solution) ?? createState(puzzle.solution.length) : createState(puzzle.solution.length);
-  return { date, size, puzzle, game };
+  const cached = memory.get(puzzle.id);
+  if (cached) return { view: { date, size, puzzle, game: cached }, unavailable: false };
+  const storage = browserNonogramStorage();
+  if (!storage) return { view: freshView(date, size, puzzle), unavailable: true };
+  const loaded = loadNonogram(storage, puzzle.id, puzzle.solution);
+  if (!loaded.available) return { view: freshView(date, size, puzzle), unavailable: true };
+  return { view: { date, size, puzzle, game: loaded.state ?? createState(puzzle.solution.length) }, unavailable: false };
+}
+
+function readCompleted(date: string, size: NonogramSize, memory: Map<string, NonogramState>) {
+  const puzzle = puzzleForDate(size, date);
+  const cached = memory.get(puzzle.id);
+  if (cached) return cached.completed;
+  const storage = browserNonogramStorage();
+  if (!storage) return false;
+  const loaded = loadNonogram(storage, puzzle.id, puzzle.solution);
+  return loaded.available && loaded.state?.completed === true;
 }
 
 export function NonogramGame() {
@@ -25,6 +40,8 @@ export function NonogramGame() {
   const [storageError, setStorageError] = useState(false);
   const [selected, setSelected] = useState(0);
   const [clockGeneration, setClockGeneration] = useState(0);
+  const [otherFinished, setOtherFinished] = useState(false);
+  const remembered = useRef(new Map<string, NonogramState>());
   const viewRef = useRef<View | null>(null);
   const drag = useRef<Mark | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -35,17 +52,27 @@ export function NonogramGame() {
   }, [view]);
 
   useEffect(() => {
-    const storage = browserStorage();
     const open = (date: string, size: NonogramSize) => {
-      try { setView(loadView(date, size, storage)); }
-      catch { setStorageError(true); setView(loadView(date, size, null)); }
+      const next = readBoard(date, size, remembered.current);
+      if (next.unavailable) setStorageError(true);
+      setOtherFinished(readCompleted(date, size === 5 ? 10 : 5, remembered.current));
+      setView(next.view);
       setSelected(0);
     };
-    open(utcDate(), storage ? loadPreferredSize(storage) : 5);
+    const storage = browserNonogramStorage();
+    const preferred = storage ? loadPreferredSize(storage) : { available: false as const };
+    if (!preferred.available) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- storage can only be read after mount
+      setStorageError(true);
+    }
+    open(utcDate(), preferred.available ? preferred.size : 5);
     const watch = () => {
       const current = viewRef.current;
       const date = utcDate();
-      if (current && date !== current.date) open(date, current.size);
+      if (current && date !== current.date) {
+        remembered.current.set(current.puzzle.id, current.game);
+        open(date, current.size);
+      }
     };
     const interval = window.setInterval(watch, 15_000);
     document.addEventListener("visibilitychange", watch);
@@ -54,13 +81,9 @@ export function NonogramGame() {
 
   useEffect(() => {
     if (!view) return;
-    const storage = browserStorage();
-    let failed = !storage;
-    if (storage) {
-      try { saveNonogram(storage, view.puzzle.id, view.game, view.size); }
-      catch { failed = true; }
-    }
-    if (failed) {
+    remembered.current.set(view.puzzle.id, view.game);
+    const storage = browserNonogramStorage();
+    if (!storage || !saveNonogram(storage, view.puzzle.id, view.game, view.size)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- surface a browser storage failure without blocking play
       setStorageError(true);
     }
@@ -92,8 +115,13 @@ export function NonogramGame() {
   }
 
   function chooseSize(size: NonogramSize) {
-    const storage = browserStorage();
-    setView((current) => current && current.size !== size ? loadView(current.date, size, storage) : current);
+    const current = viewRef.current;
+    if (!current || current.size === size) return;
+    remembered.current.set(current.puzzle.id, current.game);
+    setOtherFinished(current.game.completed);
+    const next = readBoard(current.date, size, remembered.current);
+    if (next.unavailable) setStorageError(true);
+    setView(next.view);
     setSelected(0);
   }
 
@@ -168,13 +196,7 @@ export function NonogramGame() {
   const filled = game.cells.filter((cell) => cell === "fill").length;
   const crossed = game.cells.filter((cell) => cell === "cross").length;
   const button = "min-h-11 rounded-xl border border-emerald-950/20 bg-white px-3 py-2 font-bold text-emerald-950 hover:bg-emerald-50 focus-visible:outline-4 focus-visible:outline-amber-400 disabled:opacity-40";
-  const otherDone = (next: NonogramSize) => {
-    if (next === view.size) return game.completed;
-    const stored = browserStorage();
-    if (!stored) return false;
-    const other = puzzleForDate(next, view.date);
-    return loadNonogram(stored, other.id, other.solution)?.completed ?? false;
-  };
+  const sizeDone = (next: NonogramSize) => next === view.size ? game.completed : otherFinished;
 
   return <section className="mx-auto w-full max-w-xl" aria-label="Daily Nonogram game">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -183,7 +205,7 @@ export function NonogramGame() {
     </div>
     {storageError ? <p role="status" className="mb-3 rounded-xl bg-amber-100 p-3 text-sm text-amber-950">Browser storage is unavailable. You can play, but progress may not be saved.</p> : null}
     <div className="mb-4 grid grid-cols-2 gap-2" role="group" aria-label="Puzzle size">
-      {([5, 10] as const).map((option) => <button key={option} type="button" className={`${button} ${view.size === option ? "!bg-emerald-950 !text-white" : ""}`} aria-pressed={view.size === option} onClick={() => chooseSize(option)}>{option}×{option}{otherDone(option) ? " · done" : ""}</button>)}
+      {([5, 10] as const).map((option) => <button key={option} type="button" className={`${button} ${view.size === option ? "!bg-emerald-950 !text-white" : ""}`} aria-pressed={view.size === option} onClick={() => chooseSize(option)}>{option}×{option}{sizeDone(option) ? " · done" : ""}</button>)}
     </div>
     <div ref={boardRef} role="grid" aria-label={`Nonogram board, ${size} by ${size}`} aria-rowcount={size + 1} aria-colcount={size + 1} className="min-w-0 touch-none select-none rounded-xl border-2 border-emerald-950 bg-emerald-950" style={{ display: "grid", gridTemplateColumns: `${size === 10 ? "4.25rem" : "3rem"} repeat(${size}, minmax(0, 1fr))` }} onKeyDown={onKeyDown} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
       <div role="presentation" />

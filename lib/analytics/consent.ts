@@ -10,21 +10,19 @@ export function parseAnalyticsConsent(value: string | null): AnalyticsConsent {
   return value === "granted" || value === "denied" ? value : "unknown";
 }
 
-export function readAnalyticsConsent(storage: ConsentReader = window.localStorage) {
+export function readAnalyticsConsent(storage?: ConsentReader) {
   try {
-    return parseAnalyticsConsent(storage.getItem(ANALYTICS_CONSENT_STORAGE_KEY));
+    return parseAnalyticsConsent((storage ?? window.localStorage).getItem(ANALYTICS_CONSENT_STORAGE_KEY));
   } catch {
     return "unknown";
   }
 }
 
-export function storeAnalyticsConsent(
-  consent: AnalyticsConsent,
-  storage: ConsentWriter = window.localStorage,
-) {
+export function storeAnalyticsConsent(consent: AnalyticsConsent, storage?: ConsentWriter) {
   try {
-    if (consent === "unknown") storage.removeItem(ANALYTICS_CONSENT_STORAGE_KEY);
-    else storage.setItem(ANALYTICS_CONSENT_STORAGE_KEY, consent);
+    const target = storage ?? window.localStorage;
+    if (consent === "unknown") target.removeItem(ANALYTICS_CONSENT_STORAGE_KEY);
+    else target.setItem(ANALYTICS_CONSENT_STORAGE_KEY, consent);
     if (typeof window !== "undefined") window.dispatchEvent(new Event(ANALYTICS_CONSENT_CHANGE_EVENT));
     return true;
   } catch {

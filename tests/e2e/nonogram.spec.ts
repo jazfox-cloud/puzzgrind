@@ -130,6 +130,80 @@ test("stores one UTC day and shows the next picture on the next UTC day", async 
   await expect(page.locator(`[data-cell-index="${index}"]`)).toHaveAttribute("aria-label", /filled/);
 });
 
+test("plays when saved JSON is corrupt and replaces it with a valid save", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.addInitScript(() => {
+    localStorage.setItem("puzzgrind.analytics-consent.v1", "denied");
+    if (!sessionStorage.getItem("nonogram-corrupt-seeded")) {
+      localStorage.setItem("puzzgrind-nonogram-v1", "{");
+      sessionStorage.setItem("nonogram-corrupt-seeded", "1");
+    }
+  });
+  await page.clock.install({ time: new Date(`${day}T15:00:00.000Z`) });
+  await page.goto("/games/nonogram");
+  await expect(page.getByRole("grid", { name: "Nonogram board, 5 by 5" })).toBeVisible();
+  await expect(page.getByText("Browser storage is unavailable")).toHaveCount(0);
+  const index = puzzleForDate(5, day).solution.indexOf(1);
+  await page.locator(`[data-cell-index="${index}"]`).click();
+  await expect(page.locator(`[data-cell-index="${index}"]`)).toHaveAttribute("aria-label", /filled/);
+  await expect.poll(() => page.evaluate((cellIndex) => {
+    try {
+      const file = JSON.parse(localStorage.getItem("puzzgrind-nonogram-v1") ?? "") as { puzzles?: Record<string, { cells?: string[] }> };
+      return Object.values(file.puzzles ?? {}).some((puzzle) => puzzle.cells?.[cellIndex] === "fill");
+    } catch { return false; }
+  }, index)).toBe(true);
+  await page.reload();
+  await expect(page.locator(`[data-cell-index="${index}"]`)).toHaveAttribute("aria-label", /filled/);
+  expect(errors).toEqual([]);
+});
+
+test("keeps the board playable when storage methods or the storage object throw", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.addInitScript(() => {
+    const deny = () => { throw new DOMException("The operation is insecure.", "SecurityError"); };
+    const storage = { getItem: deny, setItem: deny, removeItem: deny, clear: deny, key: deny, length: 0 };
+    Object.defineProperty(window, "localStorage", { configurable: true, get: () => storage });
+  });
+  await page.clock.install({ time: new Date(`${day}T15:00:00.000Z`) });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/games/nonogram");
+  const index = puzzleForDate(5, day).solution.indexOf(1);
+  const cell = page.locator(`[data-cell-index="${index}"]`);
+  await expect(page.getByRole("grid", { name: "Nonogram board, 5 by 5" })).toBeVisible();
+  await expect(page.getByText("Browser storage is unavailable. You can play, but progress may not be saved.")).toBeVisible();
+  await cell.click();
+  await expect(cell).toHaveAttribute("aria-label", /filled/);
+  await page.getByRole("button", { name: /^10×10/ }).click();
+  await expect(page.getByRole("grid", { name: "Nonogram board, 10 by 10" })).toBeVisible();
+  await page.getByRole("button", { name: /^5×5/ }).click();
+  await expect(cell).toHaveAttribute("aria-label", /filled/);
+  await page.screenshot({ path: "/opt/cursor/artifacts/nonogram-storage-denied-mobile.png", fullPage: false });
+  expect(errors).toEqual([]);
+});
+
+test("keeps the board playable when reading localStorage itself throws", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      get() { throw new DOMException("The operation is insecure.", "SecurityError"); },
+    });
+  });
+  await page.clock.install({ time: new Date(`${day}T15:00:00.000Z`) });
+  await page.goto("/games/nonogram");
+  const index = puzzleForDate(5, day).solution.indexOf(1);
+  await expect(page.getByRole("grid", { name: "Nonogram board, 5 by 5" })).toBeVisible();
+  await expect(page.getByText("Browser storage is unavailable")).toBeVisible();
+  await page.locator(`[data-cell-index="${index}"]`).click();
+  await expect(page.locator(`[data-cell-index="${index}"]`)).toHaveAttribute("aria-label", /filled/);
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.locator(`[data-cell-index="${index}"]`)).toHaveAttribute("aria-label", /empty/);
+  expect(errors).toEqual([]);
+});
+
 test("fits the daily board on a phone and a desktop window", async ({ page }) => {
   await denyAnalytics(page);
   await page.clock.install({ time: new Date(`${day}T15:00:00.000Z`) });

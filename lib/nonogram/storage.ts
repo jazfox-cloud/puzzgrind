@@ -9,7 +9,11 @@ const MAX_SECONDS = 60 * 60 * 24 * 7;
 export type NonogramStorage = {
   getItem: (key: string) => string | null;
   setItem: (key: string, value: string) => void;
+  removeItem?: (key: string) => void;
 };
+
+export type LoadedNonogram = { available: true; state: NonogramState | null } | { available: false };
+export type LoadedSize = { available: true; size: 5 | 10 } | { available: false };
 
 type StoredPuzzle = {
   cells: Mark[];
@@ -75,27 +79,69 @@ export function parsePuzzleSave(value: unknown, solution: readonly number[]): No
   };
 }
 
-export function loadNonogram(storage: NonogramStorage, puzzleId: string, solution: readonly number[]): NonogramState | null {
-  const file = parseSaveFile(storage.getItem(NONOGRAM_SAVE_KEY));
-  if (!file) return null;
-  return parsePuzzleSave(file.puzzles[puzzleId], solution);
+function readRaw(storage: NonogramStorage): { available: true; raw: string | null } | { available: false } {
+  try {
+    return { available: true, raw: storage.getItem(NONOGRAM_SAVE_KEY) };
+  } catch {
+    return { available: false };
+  }
 }
 
-export function loadPreferredSize(storage: NonogramStorage): 5 | 10 {
-  return parseSaveFile(storage.getItem(NONOGRAM_SAVE_KEY))?.preferredSize ?? 5;
+/** Returns null when this browser denies the storage object. Method failures are reported by the callers. */
+export function browserNonogramStorage(): NonogramStorage | null {
+  try {
+    if (typeof window === "undefined") return null;
+    const storage = window.localStorage;
+    if (!storage || typeof storage.getItem !== "function" || typeof storage.setItem !== "function") return null;
+    return storage;
+  } catch {
+    return null;
+  }
 }
 
-export function saveNonogram(storage: NonogramStorage, puzzleId: string, state: NonogramState, preferredSize: 5 | 10): void {
-  const existing = parseSaveFile(storage.getItem(NONOGRAM_SAVE_KEY)) ?? emptySaveFile();
-  const puzzles = { ...existing.puzzles };
-  puzzles[puzzleId] = {
-    cells: state.cells,
-    history: state.history.slice(-HISTORY_LIMIT),
-    future: state.future.slice(-HISTORY_LIMIT),
-    tool: state.tool,
-    seconds: state.seconds,
-    completed: state.completed,
-  };
-  const file: StoredFile = { version: 1, preferredSize, puzzles };
-  storage.setItem(NONOGRAM_SAVE_KEY, JSON.stringify(file));
+export function loadNonogram(storage: NonogramStorage, puzzleId: string, solution: readonly number[]): LoadedNonogram {
+  const read = readRaw(storage);
+  if (!read.available) return { available: false };
+  const file = parseSaveFile(read.raw);
+  if (!file) return { available: true, state: null };
+  return { available: true, state: parsePuzzleSave(file.puzzles[puzzleId], solution) };
+}
+
+export function loadPreferredSize(storage: NonogramStorage): LoadedSize {
+  const read = readRaw(storage);
+  if (!read.available) return { available: false };
+  const file = parseSaveFile(read.raw);
+  return { available: true, size: file?.preferredSize === 10 ? 10 : 5 };
+}
+
+export function saveNonogram(storage: NonogramStorage, puzzleId: string, state: NonogramState, preferredSize: 5 | 10): boolean {
+  try {
+    const read = readRaw(storage);
+    if (!read.available) return false;
+    const existing = parseSaveFile(read.raw) ?? emptySaveFile();
+    const puzzles = { ...existing.puzzles };
+    puzzles[puzzleId] = {
+      cells: state.cells,
+      history: state.history.slice(-HISTORY_LIMIT),
+      future: state.future.slice(-HISTORY_LIMIT),
+      tool: state.tool,
+      seconds: state.seconds,
+      completed: state.completed,
+    };
+    const file: StoredFile = { version: 1, preferredSize, puzzles };
+    storage.setItem(NONOGRAM_SAVE_KEY, JSON.stringify(file));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function removeNonogramSave(storage: NonogramStorage): boolean {
+  try {
+    if (typeof storage.removeItem !== "function") return false;
+    storage.removeItem(NONOGRAM_SAVE_KEY);
+    return true;
+  } catch {
+    return false;
+  }
 }
