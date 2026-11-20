@@ -44,6 +44,17 @@ describe("analytics consent storage", () => {
     expect(storeAnalyticsConsent("granted", unavailable)).toBe(false);
   });
 
+  it("does not throw when the localStorage object itself is denied", () => {
+    const descriptor = Object.getOwnPropertyDescriptor(window, "localStorage");
+    Object.defineProperty(window, "localStorage", { configurable: true, get() { throw new DOMException("denied", "SecurityError"); } });
+    try {
+      expect(readAnalyticsConsent()).toBe("unknown");
+      expect(storeAnalyticsConsent("granted")).toBe(false);
+    } finally {
+      if (descriptor) Object.defineProperty(window, "localStorage", descriptor);
+    }
+  });
+
   it("clears only accessible Google Analytics cookie names", () => {
     const writeCookie = vi.fn();
     expect(clearAnalyticsCookies("_ga=one; sudoku-progress=keep; _ga_TEST=two", "www.puzzgrind.com", writeCookie)).toBe(2);

@@ -5,6 +5,7 @@ const footerLinks = [
   { href: "/guides", label: "Articles" },
   { href: "/sudoku", label: "Daily Sudoku" },
   { href: "/games/mini-sudoku", label: "Mini Sudoku" },
+  { href: "/games/nonogram", label: "Daily Nonogram" },
   { href: "/games/lexi-daily", label: "Lexi Daily" },
   { href: "/privacy", label: "Privacy" },
 ] as const;
