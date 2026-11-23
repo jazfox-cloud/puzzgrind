@@ -16,6 +16,8 @@ const categories = [
     { href: "/guides/6x6-sudoku-hidden-single", title: "Find a Hidden Single in 6×6 Sudoku", description: "Find the only position for a number within a box." },
     { href: "/guides/6x6-sudoku-naked-pairs", title: "How to Find a Naked Pair in 6×6 Sudoku", description: "Use a pair of candidates to eliminate possibilities in a column." },
     { href: "/guides/6x6-sudoku-box-line", title: "Use Box-Line Elimination in 6×6 Sudoku", description: "Use the connection between a box and a column to find a move." },
+    { href: "/guides/6x6-sudoku-hidden-pairs", title: "Find a Hidden Pair in 6×6 Sudoku", description: "Find two numbers confined to two cells and remove extra notes." },
+    { href: "/guides/mini-sudoku-save-progress", title: "How Mini Sudoku Saves Your Progress", description: "Understand local saving, reset and what to check when a board is missing." },
   ] },
   { name: "Daily Sudoku", kind: "Logic", gameHref: "/sudoku", articles: [
     { href: "/guides/sudoku-single-candidate", title: "How to Find a Single Candidate in 9×9 Sudoku", description: "Use a worked example to find a number without guessing." },
