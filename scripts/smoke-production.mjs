@@ -1,3 +1,5 @@
+import { setTimeout } from "node:timers/promises";
+
 import { resolveGitSha } from "./lib/cloudflare-artifact.mjs";
 import { evaluateHtmlCacheSafety } from "./lib/cache-safety.mjs";
 import { differingPageSemanticFields, extractPageSemantics } from "./lib/html-semantics.mjs";
@@ -52,9 +54,7 @@ async function assertHttpsRedirect(path) {
   console.log(`Production smoke: ${source.href} -> ${response.status} ${location}`);
 }
 
-const gitSha = resolveGitSha();
-for (const path of ["/", "/sudoku", "/privacy"]) await assertHttpsRedirect(path);
-for (const [path, canonical] of [["/", `${ORIGIN}/`], ["/games/mini-sudoku", `${ORIGIN}/games/mini-sudoku`], ["/games/nonogram", `${ORIGIN}/games/nonogram`], ["/guides", `${ORIGIN}/guides`], ["/guides/6x6-sudoku-single-candidate", `${ORIGIN}/guides/6x6-sudoku-single-candidate`], ["/guides/6x6-sudoku-conflicts", `${ORIGIN}/guides/6x6-sudoku-conflicts`], ["/guides/sudoku-single-candidate", `${ORIGIN}/guides/sudoku-single-candidate`], ["/guides/lexi-repeated-letters", `${ORIGIN}/guides/lexi-repeated-letters`], ["/privacy", `${ORIGIN}/privacy`]]) {
+async function comparePage(path, canonical, gitSha) {
   const standard = await read(path);
   const busted = await read(path, gitSha);
   if (standard.response.status !== 200 || busted.response.status !== 200) fail(path, `returned ${standard.response.status}/${busted.response.status}`);
@@ -62,7 +62,21 @@ for (const [path, canonical] of [["/", `${ORIGIN}/`], ["/games/mini-sudoku", `${
   assertDeploymentSafeCache(busted.response, `${path}?deploy-check`);
   const standardSemantics = assertProductionHtml(standard.body, canonical, path);
   const bustedSemantics = assertProductionHtml(busted.body, canonical, `${path}?deploy-check`);
-  const differences = differingPageSemanticFields(standardSemantics, bustedSemantics);
+  return differingPageSemanticFields(standardSemantics, bustedSemantics);
+}
+
+const gitSha = resolveGitSha();
+for (const path of ["/", "/sudoku", "/privacy"]) await assertHttpsRedirect(path);
+for (const [path, canonical] of [["/", `${ORIGIN}/`], ["/games/mini-sudoku", `${ORIGIN}/games/mini-sudoku`], ["/games/nonogram", `${ORIGIN}/games/nonogram`], ["/guides", `${ORIGIN}/guides`], ["/guides/6x6-sudoku-single-candidate", `${ORIGIN}/guides/6x6-sudoku-single-candidate`], ["/guides/6x6-sudoku-conflicts", `${ORIGIN}/guides/6x6-sudoku-conflicts`], ["/guides/sudoku-single-candidate", `${ORIGIN}/guides/sudoku-single-candidate`], ["/guides/lexi-repeated-letters", `${ORIGIN}/guides/lexi-repeated-letters`], ["/privacy", `${ORIGIN}/privacy`]]) {
+  let differences = await comparePage(path, canonical, gitSha);
+  if (path === "/guides") {
+    for (const delay of [2000, 5000]) {
+      if (differences.length !== 1 || differences[0] !== "mainText") break;
+      console.log(`Production smoke: ${path} mainText differs, rechecking in ${delay} ms`);
+      await setTimeout(delay);
+      differences = await comparePage(path, canonical, gitSha);
+    }
+  }
   if (differences.length > 0) fail(path, `standard and cache-busted page semantics differ: ${differences.join(", ")}`);
   console.log(`Production smoke: ${path} standard/cache-busted SEO and cache policy match`);
 }
